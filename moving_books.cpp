@@ -28,13 +28,10 @@ int main() {
         int debug=0;
         cerr << "m=" << m << endl;
 
-
-
         boxmax = 0;
         for(int i=0; i<m; ++i) {
             cerr << "i=" << i << endl;
             cin >> tmp;
-//            boxes[i] = tmp;
 
             if (tmp > boxmax)
                 boxmax = tmp;
@@ -62,12 +59,16 @@ int main() {
             //     boxlist[tmp] = 1;
             // }
         }
-//         exit(2);
+                cerr << "done reading\n";
 
         /* greater */
         // sort(boxes.begin(), boxes.end(), greater<int>());
 
         sort(friends.begin(), friends.end(), greater<int>());
+        if(*(friends.begin()) <= boxmax) {
+            cout << "impossible\n";
+            break;
+        }
 
         // /* Create array with boxes */
         // vector<int> boxlist(boxmax+1, -1);
@@ -83,6 +84,12 @@ int main() {
         int boxcount = 0, highindex = boxmax;
 
         int timecnt = 0;
+
+        /* how many times do we need at minimum?
+         * instead of subtracting, we can divide / count,
+         * if we know that this one is carry in round x
+         */
+
 
         while(!boxlist.empty()) {
             bool boxes_carried = false;
