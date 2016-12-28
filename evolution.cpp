@@ -2,6 +2,46 @@
 #include <climits>
 #include <vector>
 #include <algorithm> /* sort */
+#include <unordered_map>
+
+/* Too slow, possible fixes:
+
+[x] create hash table for name lookup? -> map? -> UNORDERED MAP!
+
+Reversed list/vector/container:
+
+- by age
+- reachable from
+
+vector w/ all ages containing
+
+Can we build O(1) access for name + age?
+
+
+name     age------>
+|
+|
+|
+v
+
+>>> (50000**2)/(1024**3)
+2.3283064365386963
+
+2.3 GiB!
+
+List is relatively small!!!
+
+256 length => 12 MiB
+>>> (50000*256)/(1024**2)
+12.20703125
+
+
+- precompute distances in O(1) array?
+
+-- use ancestor age as offset to build array?
+
+
+*/
 
 using namespace std;
 
@@ -13,7 +53,6 @@ struct node {
 };
 
 bool operator < (const node& n1, const node& n2) {
-//    cerr << "cmp: " << n1.name << "<->" << n2.name << ": " << (n1.name < n2.name) << "\n";
     return n1.name < n2.name;
 }
 
@@ -27,9 +66,8 @@ int main() {
 
     int t,n,q,tmp, age;
     string name;
-
-    // cout << INT_MAX << endl;
-    // cout << LONG_MAX << endl;
+    node n_in;
+    node *n2;
 
     cin >> t;
 
@@ -37,76 +75,58 @@ int main() {
         cin >> n;
         cin >> q;
 
-        vector<node> species(n);
+        unordered_map<string, node> species2;
         vector<query> queries(q);
 
         for(int i=0; i <n; ++i) {
-            node n;
-            n.prev = NULL;
-            n.next = NULL;
+            n_in.prev = NULL;
+            n_in.next = NULL;
 
-            cin >> n.name;
-            cin >> n.age;
+            cin >> n_in.name;
+            cin >> n_in.age;
 
-            // cerr << n.name << endl;
-
-            species[i] = n;
-
+            species2[n_in.name] = n_in;
         }
-        /* sort for searches */
-        sort(species.begin(), species.end());
 
         /* read relations / graph building */
-        node offspring, ancestor;
+        string offspring, ancestor;
+        node n_off, n_anc;
         for(int i=0; i < (n-1); ++i) {
+            cin >> offspring;
+            cin >> ancestor;
 
-            cin >> offspring.name;
-            cin >> ancestor.name;
-
-            // cerr << ancestor.name << "<----" << offspring.name << endl;
-
-            auto off_node = lower_bound(species.begin(), species.end(), offspring);
-            auto ancestor_node = lower_bound(species.begin(), species.end(), ancestor);
-
-            if(off_node == species.end() || ancestor_node == species.end()) {
-                cerr << "very wrong\n";
-                exit(33);
-            }
-
-            off_node->prev = &(*ancestor_node);
-            ancestor_node->next = &(*off_node);
+            (species2[offspring]).prev = &(species2[ancestor]);
+            (species2[ancestor]).next = &(species2[offspring]);
         }
 
-        node n, *np;
-        for(int i=0; i < q; ++i) {
-            cin >> n.name;
-            cin >> n.age;
+        // /* Average length: 256 */
+        // long cnt = 0;
+        // for(auto it = species2.begin(); it != species2.end(); ++it) {
+        //     n2 = &(it->second);
+        //     while(n2) {
+        //         cnt++;
+        //         n2 = n2->prev;
+        //     }
+        // }
+        // cout << "cnt:" << cnt/species2.size() << endl;
 
-            auto nit = lower_bound(species.begin(), species.end(), n);
-            np = &(*nit);
+        // exit(0);
+
+        /* Answer queries */
+        for(int i=0; i < q; ++i) {
+            cin >> name;
+            cin >> age;
+            n2 = &(species2[name]);
 
             age = 0;
-            while(np) {
-                // cerr << "(" << age << ":" << np->prev->age << ":" << np->name << "->" << np->prev->name << ")->";
-
-                // if((np->prev->age + age) > n.age) break;
-
-                /* root node */
-                if(!(np->prev)) break;
-
-                if((np->prev->age) > n.age) break;
-
-                age += np->prev->age;
-                np = np->prev;
-
+            while(n2->prev && n2->prev->age > age) {
+                n2 = n2->prev;
             }
-            // cerr << endl;
-            cout << np->name;
+            cout << n2->name;
+
             if((q-i) > 1) cout << " ";
 
         }
         cout << "\n";
-
-
     }
 }

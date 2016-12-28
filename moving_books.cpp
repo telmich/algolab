@@ -87,12 +87,12 @@ int main() {
 
         /* how many times do we need at minimum?
          * instead of subtracting, we can divide / count,
-         * if we know that this one is carry in round x
+         * if we know that this one is carrying in round x
          */
-
 
         while(!boxlist.empty()) {
             bool boxes_carried = false;
+
             /* this round requires at least 2 minutes */
             timecnt += 2;
 
