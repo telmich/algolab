@@ -48,18 +48,15 @@ using namespace std;
 struct node {
     string name;
     int age;
-    node *prev;
-    node *next;
+    vector<int>prevnodes;
 };
-
-bool operator < (const node& n1, const node& n2) {
-    return n1.name < n2.name;
-}
 
 struct query {
     string name;
     int age;
 };
+
+
 
 int main() {
     ios_base::sync_with_stdio(false);
@@ -67,7 +64,6 @@ int main() {
     int t,n,q,tmp, age;
     string name;
     node n_in;
-    node *n2;
 
     cin >> t;
 
@@ -75,13 +71,15 @@ int main() {
         cin >> n;
         cin >> q;
 
+    FIXME: add DFS to gain knowledge about all successors for every node
+    FIXME: use binary search over that later!
+
         unordered_map<string, node> species2;
+
+
         vector<query> queries(q);
 
         for(int i=0; i <n; ++i) {
-            n_in.prev = NULL;
-            n_in.next = NULL;
-
             cin >> n_in.name;
             cin >> n_in.age;
 
