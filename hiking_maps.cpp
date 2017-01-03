@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Triangle_2.h>
 #include <CGAL/Line_2.h>
 #include <CGAL/Point_2.h>
@@ -10,7 +11,8 @@
 using namespace std;
 using namespace CGAL;
 
-typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
+//typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef Kernel::Triangle_2 Triangle;
 typedef Kernel::Point_2 Point;
 typedef Kernel::Line_2 Line;
@@ -74,6 +76,25 @@ bool in_triangle(Segment &s, Triangle &t)
     return res;
 }
 
+void create_triangle_points(const vector<int> &in_points, vector<Point> &out_points)
+{
+    for(int i=0; i < 6; i++) {
+        out_points[i] = Point(in_points[2*i], in_points[(2*i)+1]);
+    }
+
+    /* ensure correct order */
+    for(int j=0; j<6; j+=2)
+        if (right_turn(out_points[j],out_points[j+1],out_points[(j+2)%6])) swap(out_points[j],out_points[j+1]);
+
+}
+
+bool in_triangle_by_points(const Point &p, const vector<Point> &t)
+{
+    return !right_turn(t[0],t[1],p) &&
+        !right_turn(t[2],t[3],p) &&
+        !right_turn(t[4],t[5],p);
+}
+
 void create_legs(vector<Segment> &segment, vector<Point> &point)
 {
     for(int i=0; i < (point.size()-1); ++i) {
@@ -134,15 +155,15 @@ int main() {
 
         cin >> m >> n;
 
-        cerr << "m/n = " << m << " " << n << endl;
+//        cerr << "m/n = " << m << " " << n << endl;
 
         /* To create triangles */
         vector<Point> vertices(3);
 
         /* To store triangles */
-        vector<Triangle> map_parts(n);
+        vector<vector <Point> > map_points(n, vector<Point>(6));
 
-        vector<Segment> legs(m-1);
+        /* To store legs */
         vector<Point> leg_points(m);
 
         for(int i=0; i < m; ++i) {
@@ -150,19 +171,13 @@ int main() {
             cin >> x >> y;
             leg_points[i] = Point(x,y);
         }
-        create_legs(legs, leg_points);
+//        create_legs(legs, leg_points);
 
         for(int i=0; i < n; ++i) {
             for(int j=0; j < 12; ++j) {
                 cin >> t_points[j];
             }
-
-            /* Something is broken -- abort */
-            if(!get_triangle_vertices(vertices, t_points)) {
-                return 1;
-            }
-
-            map_parts[i] = Triangle(vertices[0], vertices[1], vertices[2]);
+            create_triangle_points(t_points, map_points[i]);
         }
 
         /* test all triangles and paths: O(n*m) */
@@ -171,8 +186,11 @@ int main() {
         /* get all containers */
         for(int i=0; i < n; ++i) {
             for(int j=0; j < (m-1); ++j) {
-                if(in_triangle(legs[j], map_parts[i])) {
+                if(in_triangle_by_points(leg_points[j], map_points[i]) &&
+                   in_triangle_by_points(leg_points[j+1], map_points[i])) {
+
                     in_maps[i][j] = 1;
+//                    cerr <<i << "inmaps [" << i << "][" << j << "]=1\n";
                 }
             }
         }
@@ -186,11 +204,20 @@ int main() {
 
         int low, high;
 
-        for(low = high = 0; high < n; ) {
-            if(!all_in(current_window)) { /* grow window */
-                add_to_window(current_window, in_maps[high]);
+        low = high = 0;
+
+        bool done = false;
+        while(!done) {
+            if(!all_in(current_window)) {
+                if(high < n) {  /* grow window */
+                    add_to_window(current_window, in_maps[high]);
+                } else { /* cannot grow further, abort */
+                    done = true;
+                }
                 ++high;
+                //              cerr << "incomplete\n";
             } else { /* shrink window */
+                // cerr << "complete\n";
                 if(((high - low)) < min_cost) {
                     min_cost = (high - low);
                 }
