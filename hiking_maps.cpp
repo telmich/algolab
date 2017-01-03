@@ -18,31 +18,34 @@ typedef Kernel::Point_2 Point;
 typedef Kernel::Line_2 Line;
 typedef Kernel::Segment_2 Segment;
 
-void add_to_window(vector<int> &liste, vector<int> &to_add) {
+bool add_to_window(vector<int> &liste, vector<int> &to_add) {
     if(liste.size() != to_add.size()) {
         cerr << "a: Size bug: " << liste.size() << " " << to_add.size() << "\n";
-        return;
+        return false;
     }
 
     for(int i=0; i < liste.size(); ++i) {
         liste[i] += to_add[i];
     }
+
+    return true;
 }
 
 
-void remove_from_window(vector<int> &liste, vector<int> &to_remove) {
+bool remove_from_window(vector<int> &liste, vector<int> &to_remove) {
     if(liste.size() != to_remove.size()) {
-        cerr << "r: Size bug\n";
-        return;
+        cerr << "r: Size bug: " << liste.size() << " " << to_remove.size() << "\n";
+        return false;
     }
 
     for(int i=0; i < liste.size(); ++i) {
         liste[i] -= to_remove[i];
     }
+    return true;
 }
 
 
-bool all_in(vector<int> liste) {
+bool all_in(const vector<int>  &liste) {
     bool res = true;
 
     for(int i=0; i < liste.size(); ++i) {
@@ -66,7 +69,7 @@ bool in_triangle(Segment &s, Triangle &t)
     if (const Segment* os = boost::get<Segment>(&*o)) {
         if(*os == s) {
             res = true;
-            cerr << "Inside triangle\n";
+//            cerr << "Inside triangle\n";
         }
     }
 
@@ -88,10 +91,7 @@ bool get_triangle_vertices(vector<Point> &vertex, vector<int> points)
     for(int i=0, pi=0; i < 6; ++i) {
         ps[i] = Point(points[pi], points[pi+1]);
 
-
         pi+=2;
-//        cerr << "points[" << i << "] = " << points[pi-2] << " " << points[pi-1] << endl;
-//        cerr << "p[" << i << "] = " << ps[i] << endl;
     }
 
     Line l[] = { Line(ps[0], ps[1]), Line(ps[2], ps[3]), Line(ps[4], ps[5]) };
@@ -136,6 +136,8 @@ int main() {
 
         cin >> m >> n;
 
+        cerr << "m/n = " << m << " " << n << endl;
+
         /* To create triangles */
         vector<Point> vertices(3);
 
@@ -163,7 +165,7 @@ int main() {
             }
 
             map_parts[i] = Triangle(vertices[0], vertices[1], vertices[2]);
-            cerr << map_parts[i] << endl;
+            // cerr << map_parts[i] << endl;
         }
 
         /* test all triangles and paths: O(n*m) */
@@ -174,7 +176,6 @@ int main() {
             for(int j=0; j< (m-1); j++) {
                 if(in_triangle(legs[j], map_parts[i])) {
                     in_maps[i][j] = 1;
-                    cerr << j << " in " << i << endl;
                 }
             }
         }
@@ -182,7 +183,7 @@ int main() {
         /* one map per leg -- every leg has at least one map (by exercise) */
         /* FIXME: start with all maps ? or all legs ? */
         /* doesnt matter */
-        int min_cost = n;
+        int min_cost = INT_MAX;
 
         vector<int> current_window(m-1, 0);
 
@@ -191,8 +192,9 @@ int main() {
         for(low = high = 0; high < n; ) {
             if(!all_in(current_window)) { /* grow window */
                 ++high;
-                cerr << high << " in loop " << in_maps[high].size() << endl;
-                add_to_window(current_window, in_maps[high]);
+                if(high < n) {
+                    add_to_window(current_window, in_maps[high]);
+                }
             } else { /* shrink window */
                 if(((high - low)+1) < min_cost) {
                     min_cost = (high - low) + 1;
