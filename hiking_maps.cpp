@@ -1,0 +1,176 @@
+#include <iostream>
+#include <vector>
+
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Triangle_2.h>
+#include <CGAL/Line_2.h>
+#include <CGAL/Point_2.h>
+#include <CGAL/Segment_2.h>
+
+
+
+using namespace std;
+using namespace CGAL;
+
+typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
+typedef Kernel::Triangle_2 Triangle;
+typedef Kernel::Point_2 Point;
+typedef Kernel::Line_2 Line;
+typedef Kernel::Segment_2 Segment;
+
+// inline bool all_in(vector<bool>
+
+bool in_triangle(Segment &s, Triangle &t)
+{
+    bool res = false;
+    if(! do_intersect(s, t)) { return false; }
+
+    auto o = intersection(s, t);
+
+    /* is a segment -- verify if it is the same */
+    if (const Segment* os = boost::get<Segment>(&*o)) {
+        if(*os == s) {
+            res = true;
+            cerr << "Inside triangle\n";
+        }
+    }
+
+    return res;
+}
+
+void create_legs(vector<Segment> &segment, vector<Point> &point)
+{
+    for(int i=0; i < (point.size()-1); ++i) {
+        segment[i] = Segment(point[i], point[i+1]);
+    }
+}
+
+bool get_triangle_vertices(vector<Point> &vertex, vector<int> points)
+{
+    vector<Point> ps(6);
+    int pi = 0;
+
+    for(int i=0, pi=0; i < 6; ++i) {
+        ps[i] = Point(points[pi], points[pi+1]);
+
+
+        pi+=2;
+//        cerr << "points[" << i << "] = " << points[pi-2] << " " << points[pi-1] << endl;
+//        cerr << "p[" << i << "] = " << ps[i] << endl;
+    }
+
+    Line l[] = { Line(ps[0], ps[1]), Line(ps[2], ps[3]), Line(ps[4], ps[5]) };
+
+    /* get all three points */
+    int other = 1;
+    for(int i=0; i < 3; ++i, ++other) {
+        /* reset */
+        if(other > 2) other = 0;
+
+        if(!do_intersect(l[i], l[other])) {
+            cerr << "No intersection: " << l[i] << "|" << l[other] << "\n";
+            return false;
+        }
+
+        auto o = intersection(l[i], l[other]);
+        Point* op;
+
+        if (!(op = boost::get<Point>(&*o))) {
+            cerr << "No point intersection: " << l[i] << "|" << l[other] << "\n";
+            return false;
+        }
+
+        vertex[i] = *op;
+        // cerr << *op << endl;
+    }
+    return true;
+}
+
+
+int main() {
+    ios_base::sync_with_stdio(false);
+
+    int c;
+
+    cin >> c;
+
+    while(c--) {
+        int n, m, tmp;
+
+        vector<int> t_points(12);
+
+        cin >> m >> n;
+
+        /* To create triangles */
+        vector<Point> vertices(3);
+
+        /* To store triangles */
+        vector<Triangle> map_parts(n);
+
+        vector<Segment> legs(m-1);
+        vector<Point> leg_points(m);
+
+        for(int i=0; i < m; ++i) {
+            int x, y;
+            cin >> x >> y;
+            leg_points[i] = Point(x,y);
+        }
+        create_legs(legs, leg_points);
+
+        for(int i=0; i < n; ++i) {
+            for(int j=0; j < 12; ++j) {
+                cin >> t_points[j];
+            }
+
+            /* Something is broken -- abort */
+            if(!get_triangle_vertices(vertices, t_points)) {
+                return 1;
+            }
+
+            map_parts[i] = Triangle(vertices[0], vertices[1], vertices[2]);
+            cerr << map_parts[i] << endl;
+        }
+
+        /* test all triangles and paths: O(n*m) */
+        vector<vector<bool> > in_maps(m-1, vector<bool>(n, false));
+
+        /* get all containers */
+        for(int i=0; i < n; ++i) {
+            for(int j=0; j< (m-1); j++) {
+                if(in_triangle(legs[j], map_parts[i])) {
+                    in_maps[j][i] = true;
+                    cerr << j << " in " << i << endl;
+                }
+            }
+        }
+
+        /* one map per leg -- every leg has at least one map (by exercise) */
+        int min_cost = m-1;
+
+        /* for testing with sample - FIXME */
+        min_cost = 20;
+
+        vector<bool> in_current_window(m-1, false);
+
+        int low, high;
+
+        low = high = 0;
+
+        while(high != (m-1)) {
+            if(!all_in(current_window)) { /* grow window */
+                ++high;
+                add_to_window(current_window, in_maps[high]);
+            } else { /* shrink window */
+                if((high - low) < min_cost) {
+                    min_cost = (high - low) + 1;
+                }
+                remove_from_window(current_window,
+                ++low;
+            }
+        }
+
+        cout << min_cost << endl;
+
+    }
+
+}
