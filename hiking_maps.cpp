@@ -7,8 +7,6 @@
 #include <CGAL/Point_2.h>
 #include <CGAL/Segment_2.h>
 
-
-
 using namespace std;
 using namespace CGAL;
 
@@ -165,7 +163,6 @@ int main() {
             }
 
             map_parts[i] = Triangle(vertices[0], vertices[1], vertices[2]);
-            // cerr << map_parts[i] << endl;
         }
 
         /* test all triangles and paths: O(n*m) */
@@ -173,7 +170,7 @@ int main() {
 
         /* get all containers */
         for(int i=0; i < n; ++i) {
-            for(int j=0; j< (m-1); j++) {
+            for(int j=0; j < (m-1); ++j) {
                 if(in_triangle(legs[j], map_parts[i])) {
                     in_maps[i][j] = 1;
                 }
@@ -191,14 +188,13 @@ int main() {
 
         for(low = high = 0; high < n; ) {
             if(!all_in(current_window)) { /* grow window */
+                add_to_window(current_window, in_maps[high]);
                 ++high;
-                if(high < n) {
-                    add_to_window(current_window, in_maps[high]);
-                }
             } else { /* shrink window */
-                if(((high - low)+1) < min_cost) {
-                    min_cost = (high - low) + 1;
+                if(((high - low)) < min_cost) {
+                    min_cost = (high - low);
                 }
+
                 remove_from_window(current_window, in_maps[low]);
                 ++low;
             }
@@ -206,5 +202,4 @@ int main() {
 
         cout << min_cost << endl;
     }
-
 }
