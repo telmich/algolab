@@ -18,7 +18,42 @@ typedef Kernel::Point_2 Point;
 typedef Kernel::Line_2 Line;
 typedef Kernel::Segment_2 Segment;
 
-// inline bool all_in(vector<bool>
+void add_to_window(vector<int> &liste, vector<int> &to_add) {
+    if(liste.size() != to_add.size()) {
+        cerr << "a: Size bug: " << liste.size() << " " << to_add.size() << "\n";
+        return;
+    }
+
+    for(int i=0; i < liste.size(); ++i) {
+        liste[i] += to_add[i];
+    }
+}
+
+
+void remove_from_window(vector<int> &liste, vector<int> &to_remove) {
+    if(liste.size() != to_remove.size()) {
+        cerr << "r: Size bug\n";
+        return;
+    }
+
+    for(int i=0; i < liste.size(); ++i) {
+        liste[i] -= to_remove[i];
+    }
+}
+
+
+bool all_in(vector<int> liste) {
+    bool res = true;
+
+    for(int i=0; i < liste.size(); ++i) {
+        if(liste[i] < 1) {
+            res = false;
+            break;
+        }
+    }
+    return res;
+}
+
 
 bool in_triangle(Segment &s, Triangle &t)
 {
@@ -132,45 +167,42 @@ int main() {
         }
 
         /* test all triangles and paths: O(n*m) */
-        vector<vector<bool> > in_maps(m-1, vector<bool>(n, false));
+        vector<vector<int> > in_maps(n, vector<int>(m-1, 0));
 
         /* get all containers */
         for(int i=0; i < n; ++i) {
             for(int j=0; j< (m-1); j++) {
                 if(in_triangle(legs[j], map_parts[i])) {
-                    in_maps[j][i] = true;
+                    in_maps[i][j] = 1;
                     cerr << j << " in " << i << endl;
                 }
             }
         }
 
         /* one map per leg -- every leg has at least one map (by exercise) */
-        int min_cost = m-1;
+        /* FIXME: start with all maps ? or all legs ? */
+        /* doesnt matter */
+        int min_cost = n;
 
-        /* for testing with sample - FIXME */
-        min_cost = 20;
-
-        vector<bool> in_current_window(m-1, false);
+        vector<int> current_window(m-1, 0);
 
         int low, high;
 
-        low = high = 0;
-
-        while(high != (m-1)) {
+        for(low = high = 0; high < n; ) {
             if(!all_in(current_window)) { /* grow window */
                 ++high;
+                cerr << high << " in loop " << in_maps[high].size() << endl;
                 add_to_window(current_window, in_maps[high]);
             } else { /* shrink window */
-                if((high - low) < min_cost) {
+                if(((high - low)+1) < min_cost) {
                     min_cost = (high - low) + 1;
                 }
-                remove_from_window(current_window,
+                remove_from_window(current_window, in_maps[low]);
                 ++low;
             }
         }
 
         cout << min_cost << endl;
-
     }
 
 }
