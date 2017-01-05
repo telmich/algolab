@@ -29,21 +29,22 @@ int longest_path(vector<Edge> &edge, vector<int> &weight, int n, int src) {
                            distance_map(make_iterator_property_map(distmap.begin(), get(vertex_index, g2))));
 
 
+    /* Iterate over all edges of g2  - just for fun */
     EdgeIt ebeg, eend;
-
-    tie(ebeg, eend) = edges(g2);
+    int w_tmp;
 
     for(tie(ebeg, eend) = edges(g2); ebeg != eend ; ++ebeg) {
-        ;
+        w_tmp = get( edge_weight, g2, *ebeg);
+        cerr << "e=" << *ebeg << " : " << w_tmp << endl;
     }
-    //     cout << "e=" << *ebeg << endl;
-    // }
 
+    int max_weight = 0;
 
     for(auto it=distmap.begin(); it != distmap.end(); ++it) {
         cerr << *it << endl;
+        if(*it > max_weight) max_weight = *it;
     }
-    return 42;
+    return max_weight;
 }
 
 
@@ -78,7 +79,7 @@ int main() {
 
         vector <graph_traits < Graph >::vertex_descriptor > p(num_vertices(g));
 
-        prim_minimum_spanning_tree(g, &p[0] );
+        prim_minimum_spanning_tree(g, &p[0]);
 
         int root = -1;
         int total_weight = 0;
@@ -98,8 +99,7 @@ int main() {
                 continue;
             }
 
-
-            std::pair<Graph::edge_descriptor, bool> edgePair = boost::edge(p[i], i, g);
+            pair<Graph::edge_descriptor, bool> edgePair = boost::edge(p[i], i, g);
             Graph::edge_descriptor edge = edgePair.first;
 
             w_tmp = boost::get( boost::edge_weight, g, edge);
@@ -110,7 +110,7 @@ int main() {
             mst_edges.push_back(make_pair(p[i], i));
             mst_weight.push_back(w_tmp);
 
-            cout << i << " <--> " << p[i] << " " << "w= " << total_weight << endl;
+            // cerr << i << " <--> " << p[i] << " " << "w= " << total_weight << endl;
 
             // if (p[i] != i) {
             //     std::cout << "parent[" << i << "] = " << p[i] << std::endl;
@@ -127,13 +127,13 @@ int main() {
         }
 
         /* modify edges to find longest path with dijkstra, non negative edges */
-/*        for(auto it = mst_weight.begin(); it != mst_weight.end(); ++it) {
+/* NOT NEEDED!
+        for(auto it = mst_weight.begin(); it != mst_weight.end(); ++it) {
             *it = (*it * (-1)) + max_weight;
             } */
 
         int distance = longest_path(mst_edges, mst_weight, n, root);
-        cout  << total_weight << " " << endl;
+        cout  << total_weight << " " << distance << endl;
     }
-
 
 }
