@@ -73,13 +73,21 @@ int main() {
 
         Graph g(edges.begin(), edges.end(), weight.begin(), n);
 
-        property_map<Graph, edge_weight_t>::type weightmap = get(edge_weight, g);
+        /* Iterate over all edges of g2  - just for fun */
+        /* DEBUG */
+        EdgeIt ebeg, eend;
+        int w_tmp;
 
-        /* why vertex????  mapping vertices ... == Edges*/
+        for(tie(ebeg, eend) = boost::edges(g); ebeg != eend ; ++ebeg) {
+            w_tmp = boost::get(edge_weight, g, *ebeg);
+            cerr << "orig e=" << *ebeg << " : " << w_tmp << endl;
+        }
 
         vector <graph_traits < Graph >::vertex_descriptor > p(num_vertices(g));
 
-        prim_minimum_spanning_tree(g, &p[0]);
+        // both work
+        // prim_minimum_spanning_tree(g, &p[0]);
+        prim_minimum_spanning_tree(g, make_iterator_property_map(p.begin(), get(vertex_index, g)));
 
         int root = -1;
         int total_weight = 0;
@@ -110,27 +118,7 @@ int main() {
             mst_edges.push_back(make_pair(p[i], i));
             mst_weight.push_back(w_tmp);
 
-            // cerr << i << " <--> " << p[i] << " " << "w= " << total_weight << endl;
-
-            // if (p[i] != i) {
-            //     std::cout << "parent[" << i << "] = " << p[i] << std::endl;
-            //     cout << "w = " << weightmap[i] << endl;
-            // } else {
-            //     std::cout << "parent[" << i << "] = no parent" << std::endl;
-            // }
-
-
-            // tie(e, success) = edge(j, p[j], g);
-            // if(success) {
-            //     cout << e.first << " " << e.second  << endl;
-            // }
         }
-
-        /* modify edges to find longest path with dijkstra, non negative edges */
-/* NOT NEEDED!
-        for(auto it = mst_weight.begin(); it != mst_weight.end(); ++it) {
-            *it = (*it * (-1)) + max_weight;
-            } */
 
         int distance = longest_path(mst_edges, mst_weight, n, root);
         cout  << total_weight << " " << distance << endl;
