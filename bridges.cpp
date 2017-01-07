@@ -25,7 +25,7 @@ typedef adjacency_list < vecS, vecS, undirectedS, no_property,
                          property < edge_component_t, std::size_t  > > Graph;
 typedef graph_traits < Graph >::vertex_descriptor vertex_t;
 
-bool compareEdges(vector<int, int> e1, vector<int, int> e2)
+bool compareEdges(pair<int, int> &e1, pair<int, int> &e2)
 {
     if(e1.first == e2.first) return e1.second < e2.second;
 
@@ -52,13 +52,12 @@ int main()
       n_edges[i] = make_pair(v1, v2);
     }
 
-    cerr << "foo1\n";
     Graph g(n_edges.begin(), n_edges.end(), n);
 
     property_map < Graph, edge_component_t >::type component = get(edge_component, g);
 
     size_t num_comps = biconnected_components(g, component);
-    cerr << "Found " << num_comps << " biconnected components.\n";
+//    cerr << "Found " << num_comps << " biconnected components.\n";
 
     vector<int> num_edges_in_component(num_comps, 0);
 
@@ -71,40 +70,30 @@ int main()
     }
 
     /* get all edges w/ count components = 1 */
-    vector<int, int> important_bridges;
+    vector<pair<int, int > > important_bridges;
+
     for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei) {
         if(num_edges_in_component[component[*ei]] == 1) {
-            if(source(*ei) > target(*ei)) {
-                important_bridges.push_back(make_pair(target(*ei), source(*ei)));
+            int s = source(*ei, g);
+            int t = target(*ei, g);
+            if(s > t) {
+                important_bridges.push_back(make_pair(t, s));
             } else {
-                important_bridges.push_back(make_pair(source(*ei), target(*ei)));
+                important_bridges.push_back(make_pair(s, t));
             }
         }
     }
 
-    for(int i=0; i < num_comps; ++i) {
-      if(num_edges_in_component[i] == 1) {
-        one_edge.push_back(i);
-      }
-    }
-
-
-    vector<int> one_edge;
-    for(int i=0; i < num_comps; ++i) {
-      if(num_edges_in_component[i] == 1) {
-        one_edge.push_back(i);
-      }
-    }
-
     /* print result */
-    if(one_edge.size() == 0) {
-      cout << "0\n";
+    if(important_bridges.size() == 0) {
+        cout << "0\n";
     } else {
-      cout << one_edge.size() << endl;
-      /* FIXME: sorting */
-      for(int i=0; i < one_edge.size(); ++i) {
-        cout << "component: " << one_edge[i] << endl;
-      }
+        cout << important_bridges.size() << endl;
+
+        sort(important_bridges.begin(), important_bridges.end(), compareEdges);
+        for(auto it=important_bridges.begin(); it != important_bridges.end(); ++it) {
+            cout << it->first << " " << it->second << endl;
+        }
     }
 
 
