@@ -53,7 +53,7 @@ int main()
                     name_to_idx[characteristic] = idx++;
 
                     characteristic_to_students.push_back(vector<bool>(n, false));
-                    cerr << characteristic_to_students.size() << " " << idx-1 << endl;
+//                    cerr << characteristic_to_students.size() << " " << idx-1 << endl;
                 }
 
                 student_to_characteristic[i][j] = name_to_idx[characteristic];
@@ -66,9 +66,10 @@ int main()
         int edge_counter = 0;
 
         for(int i=0; i < n; ++i) {
-            if(is_optimal) break;
+            bool has_one_edge = false;
+
             for(int j=0; j < n; ++j) {
-                if(i == j) continue;
+                if(i == j) continue; /* no connection to myself */
 
                 int matches = 0;
                 for(int k=0; k < c; ++k) {
@@ -80,19 +81,21 @@ int main()
                 }
                 /* create an edge if we need to test this combination */
                 if(matches > f) {
-//                    cerr << "Creating edge " << i << " " << j << endl;
+                    has_one_edge = true;
                     add_edge(i,j,g);
                     ++edge_counter;
-                } else {
-                    /* not even possible to build this edge! => optimal! */
-                    is_optimal = true;
-                    break;
                 }
+            }
+            if(!has_one_edge) {
+                /* not even possible to build this edge! => optimal! */
+//                cerr << "Impossible due to vertex " << i << endl;
+                is_optimal = true;
+                break;
             }
         }
 
         if(is_optimal) {
-            cout << "optimal (no graph!)\n";
+            cout << "optimal\n";
             continue;
         }
 
@@ -100,19 +103,21 @@ int main()
         bool has_matching = checked_edmonds_maximum_cardinality_matching(g, &mate[0]);
 
         int m_size = matching_size(g, &mate[0]);
-        cout << "matching size= " << m_size  << " n= " << n << " " << edge_counter << endl;
 
-        const int NULL_VERTEX = graph_traits<Graph>::null_vertex();
-        cerr << "NUll = " << NULL_VERTEX << endl;
-        for(int i=0; i < n; ++i) {
-            if(mate[i] == NULL_VERTEX) {
-                cout << "unmatched: " << i << endl;
-            }
-        }
+        // cerr << "matching size= " << m_size  << " n= " << n << " " << edge_counter << endl;
 
+        /* if we are interested in which students do not have a partner ... */
+        // const int NULL_VERTEX = graph_traits<Graph>::null_vertex();
+        // cerr << "NUll = " << NULL_VERTEX << endl;
+
+        // for(int i=0; i < n; ++i) {
+        //     if(mate[i] == NULL_VERTEX) {
+        //         cout << "unmatched: " << i << endl;
+        //     }
+        // }
 
         if(m_size == n/2) {
-            cout << "no, not ";
+            cout << "not ";
         }
         cout << "optimal\n";
     }
