@@ -52,29 +52,40 @@ int main()
 
         if(p == 1) { /* max    b · y − a · x^2 */
             /*  x, y ≥ 0 ------->>>>>>>>>>  lower bound; upper bound */
+
+            Program lp(CGAL::SMALLER, true, 0, false, 0);
+            lp.set_a(X, 0,  1); lp.set_a(Y, 0, 1); lp.set_b(0, 4);
+            lp.set_a(X, 1,  4); lp.set_a(Y, 1, 2); lp.set_b(1, a*b);
+            lp.set_a(X, 2, -1); lp.set_a(Y, 2, 1); lp.set_b(2, 1);
+            // Double D
+            lp.set_c(Y, -b);
+            lp.set_d(X, X, 2 * a);
+
+            // Solution s = solve_quadratic_program(lp, ET());
+
+            // if (s.is_optimal()) {
+            //     cout << "a " << floor((-1) * to_double(s.objective_value())) << endl;
+            // }  else if (s.is_unbounded()) {
+            //     cout << "unbounded" << endl;
+            // } else {
+            //     cout << "no" << endl;;
+            // }
+
+
             Program lp1 (CGAL::SMALLER, true, 0, false, 0);
-
-            // x + y ≤ 4
-            lp1.set_a(X, 0, 1);
-            lp1.set_a(Y, 0, 1);
-            lp1.set_b(0, 4);
-
-            // 4x + 2y ≤ ab
-            lp1.set_a(X, 1, 4);
-            lp1.set_a(Y, 1, 2);
-            lp1.set_b(1, a*b);
-
-            // − x + y ≤ 1
-            lp1.set_a(X, 2, -1);
-            lp1.set_a(Y, 2, 1);
-            lp1.set_b(2, 1);
+            lp1.set_a(X, 0, 1);  lp1.set_a(Y, 0, 1); lp1.set_b(0, 4);            // x + y ≤ 4
+            lp1.set_a(X, 1, 4);  lp1.set_a(Y, 1, 2); lp1.set_b(1, a*b);            // 4x + 2y ≤ ab
+            lp1.set_a(X, 2, -1); lp1.set_a(Y, 2, 1); lp1.set_b(2, 1);            // − x + y ≤ 1
 
             // maximize: by -ax^2 so we have to minimize -by + ax^2
-            lp1.set_d(X, X, 2*a);
-            lp1.set_c(Y, -b);
 
-            Solution s = CGAL::solve_quadratic_program(lp1, ET());
+            lp1.set_c(Y, -b);
+            lp1.set_d(X, X, 2*a);
+
+            s = CGAL::solve_quadratic_program(lp1, ET());
             assert(s.solves_quadratic_program(lp1));
+
+            if(s.is_optimal()) { cerr << "optimal......\n"; }
 
             if(s.is_unbounded()) {
                 cout << "unbounded" << endl;
@@ -88,7 +99,7 @@ int main()
 
             //     z^2replaced by z
 
-            //               x, y ≤ 0
+            //       x, y ≤ 0
             lp.set_u(X, true, 0);
             lp.set_u(Y, true, 0);
 
@@ -122,7 +133,7 @@ int main()
             if(s.is_unbounded()) {
                 cout << "unbounded" << endl;
             } else if(s.is_infeasible()) {
-                cout << "no" << endl;
+                cout << "2no" << endl;
             } else {
                 if(ceil_to_double(s.objective_value()) == -0)
                     cout << "0\n";
