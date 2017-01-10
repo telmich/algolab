@@ -37,7 +37,7 @@ int main()
 
         vector<int> asset_cost(n);
         vector<int> asset_return(n);
-        vector<vector<int > > covariance(n);
+        vector<vector<int > > covariance(n, vector<int>(n));
 
         /* cost and return values */
         for(int i=0; i<n;++i) {
@@ -75,23 +75,30 @@ int main()
 
         Solution s = CGAL::solve_linear_program(lp, ET());
         if(s.is_infeasible() || s.is_unbounded()) { /* print m times No. */
-            cout << "m times no\n";
+            for(int i=0; i < m; ++m) {
+                cout << "No.\n";
+            }
             continue;
         }
-        /* check variances fo reach person */
 
+        /* check variances fo reach person */
         for(int i=0; i < m; ++i) {
             int variances_left = person_max_variance[i];
+            cerr << "Initial variance: " << person_max_variance[i] << endl;
 
             auto it1 = s.variable_values_begin();
             for(int j=0; j < n; ++j) {
                 double alpha_1 = CGAL::to_double(*it1);
+                cerr << "[ " << m << "] alpha1= " << alpha_1 << endl;
 
                 auto it2 = s.variable_values_begin();
                 for(int k=0; k <n ; ++k) {
                     double alpha_2 = CGAL::to_double(*it2);
-                    cerr << "hier\n";
-                    variances_left -= covariance[j][k] * alpha_1 * alpha_2;
+
+                    int to_deduct = covariance[j][k] * alpha_1 * alpha_2;
+                    cerr << "alpha2= " << alpha_2 << " deduct" << to_deduct << " / " << variances_left << endl;
+
+                    variances_left -= to_deduct;
 
                     ++it2;
                 }
