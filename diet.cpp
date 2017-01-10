@@ -80,6 +80,7 @@ int main()
 
         if(s.is_infeasible()) {
             cout << "No such diet.\n";
+
         }
 
         if(s.is_unbounded()) {
