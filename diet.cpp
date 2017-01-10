@@ -79,7 +79,7 @@ int main()
         assert (s.solves_linear_program(lp));
 
         if(s.is_infeasible()) {
-            cout << "No such diet\n";
+            cout << "No such diet.\n";
         }
 
         if(s.is_unbounded()) {
