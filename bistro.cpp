@@ -4,6 +4,9 @@
 #include <CGAL/Delaunay_triangulation_2.h>
 
 #include <CGAL/nearest_neighbor_delaunay_2.h>
+#include <CGAL/squared_distance_2.h>
+
+
 
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -41,38 +44,44 @@ int main()
         int m;
         cin >> m;
         for(int i=0; i <m; ++i) {
-            Triangulation::Point p, p_nearby;
+//            Triangulation::Point p, p_nearby;
 
-            Vertex v, v_neighbor;
+            //          K::FT res;
 
-            K::FT squared_distance;
+            // v = t.insert(p);
 
+            // /* Check if point is already in -- if so distance = 0 AND DON'T REMOVE */
+            // if(t.number_of_vertices() == n) {
+            //     cout << "0\n";
+            //     continue;
+            // }
 
-            std::cin >> p;
+            // EC it = t.incident_edges(v);
+            // Triangulation::Segment seg1 = t.segment( *it );
+            // res = seg1.squared_length();
 
-            v = t.insert(p);
+            // for (int i=0; i <3 ; ++it, ++i) {
+            //     Triangulation::Segment seg = t.segment( *it );
+            //     res = std::min(res, seg.squared_length());
+            // }
 
-            /* Check if point is already in -- if so distance = 0 AND DON'T REMOVE */
-            if(t.number_of_vertices() == n) {
-                cout << "0\n";
-                continue;
-            }
-
-            EC it = t.incident_edges(v);
-            Triangulation::Segment seg1 = t.segment( *it );
-            squared_distance = seg1.squared_length();
-
-            for (int i=0; i <3 ; ++it, ++i) {
-                Triangulation::Segment seg = t.segment( *it );
-                squared_distance = std::min(squared_distance, seg.squared_length());
-            }
-
-            cout << CGAL::to_double(squared_distance) << endl;
-
+//            cout << CGAL::to_double(res) << endl;
             // nearest_power_vertex
-            v_neighbor = nearest_neighbor(t, v);
-            p_nearby = t.nearest_vertex_1D(p)->point();
+//            v_neighbor = nearest_neighbor(t, v);
 
+
+            int x, y;
+            std::cin >> x, y;
+            K::Point_2 p1(x,y), p2;
+
+            Vertex v;
+            v = t.nearest_vertex(p1);
+
+            p2 = v->point();
+
+            cerr << "abc\n";
+            squared_distance(p1, p2);
+            cerr << "def\n";
 
             // cout << v << " <-> " << v_neighbor << endl;
 
@@ -80,7 +89,7 @@ int main()
             //     cout << it.edge << endl;
             // }
 
-            t.remove(v);
+//            t.remove(v);
 
         }
 
