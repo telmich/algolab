@@ -17,7 +17,6 @@ int main()
 {
     ios_base::sync_with_stdio(false);
 
-
     Program lp (CGAL::SMALLER, false, 0, false, 0);
 
     lp.set_a(0, 0, -1);
