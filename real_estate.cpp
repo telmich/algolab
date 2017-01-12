@@ -22,6 +22,29 @@ typedef adjacency_list<vecS, vecS, directedS,
                                          property<edge_reverse_t, Traits::edge_descriptor> > > > Graph;
 
 
+typedef Traits::edge_descriptor Edge;
+
+typedef property_map<Graph, edge_capacity_t>::type Capacity;
+typedef property_map<Graph, edge_residual_capacity_t>::type ResidualCapacity;
+typedef property_map<Graph, edge_reverse_t>::type RevEdge;
+
+void my_add_edge(Graph &g, int from, int to, EdgeCapacity cap, Capacity &c, ResidualCapacity &r, RevEdge &rev)
+{
+    bool success;
+    Edge e, e_rev;
+
+    tie(e, success) = add_edge(from, to, g);
+    tie(e_rev, success) = add_edge(to, from, g);
+
+    /* capacity */
+    c[e] = cap;
+    c[e_rev] = make_pair(0, 0);
+
+    rev[e] = e_rev;
+    rev[e_rev] = e;
+
+
+}
 
 
 int main()
@@ -55,12 +78,33 @@ int main()
         }
 
         /******************** build graph ********************/
+        int highest_possible_flow = 100 * m;
 
+        Graph g;
+        Capacity capacity = get(edge_capacity, g);
+        ResidualCapacity residual_capacity = get(edge_residual_capacity, g);
+
+        RevEdge rev = get(edge_reverse, g);
+
+        /* vertex index offsets */
+        int site_offset  = n;
+        int state_offset = site_offset + m;
+        int source_vertex = state_offset + s;
+        int target_vertex = source_vertex + 1;
+
+        for(int i=0; i < n; ++i) {
+            /* generate edges from source to buyer */
+            my_add_edge(g, source_vertex, i, make_pair(highest_possible_flow, 1), capacity, residual_capacity, rev);
+
+        }
+
+        /* for testing */
+        my_add_edge(g, source_vertex, target_vertex, make_pair(highest_possible_flow, 1), capacity, residual_capacity, rev);
 
         /******************** determine flow ********************/
-//        EdgeCapacity res =
+        EdgeCapacity res = push_relabel_max_flow(g, s, t);
 
-
+        cout << res.second << " " << res.first << endl;
 
     }
 
