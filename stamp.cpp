@@ -22,7 +22,6 @@ typedef EK::FT DistanceType;
 typedef CGAL::Quadratic_program<DistanceType> Program;
 typedef CGAL::Quadratic_program_solution<DistanceType> Solution;
 
-
 /* Minimise light output such that all stamps are >= 1
 
   min(l1 + l2 + l3 + ...)
@@ -56,7 +55,7 @@ int main()
         vector<int> stamp_max(s);
         vector<Segment> walls(w);
 
-        vector<vector <Segment > > lamp_stamp(l);
+        vector<vector <Segment > > lamp_stamp(s);
         vector<bool> stamp_lit(s);
 
         vector<vector<pair<int, EK::FT > > > lamp_stamp_distance(s);
@@ -69,6 +68,11 @@ int main()
             cin >> stamps[i];
             cin >> stamp_max[i];
         }
+
+        if(w == 0) { /* special case */
+            goto nowalls;
+        }
+
         for(int i=0; i < w; ++i) {
             int a,b,c,d;
 
@@ -76,6 +80,8 @@ int main()
             walls[i] = Segment(Point(a,b), Point(c, d));
         }
 
+
+        // cerr << "stamp segments\n";
         /******************** calculate lamp stamp segments ********************/
         for(int i=0; i < stamps.size(); ++i) {
             for(int j=0; j < lamps.size(); ++j) {
@@ -83,7 +89,7 @@ int main()
             }
         }
         /******************** stamp light distances  ********************/
-        bool all_good = true;
+        // cerr << "stamp light distance\n";
         for(int i=0; i < stamps.size(); ++i) {
             for(int j=0; j < lamps.size(); ++j) {
                 bool intersected_by_wall = false;
@@ -99,13 +105,28 @@ int main()
                 lamp_stamp_distance[i].push_back(make_pair(j, lamp_stamp[i][j].squared_length()));
             }
         }
+        goto lpcode;
+
+        /******************** handle nowalls case  ********************/
+    nowalls:
+        for(int i=0; i < stamps.size(); ++i) {
+            double this_stamp_intensity = 0;
+            for(int j=0; j < lamps.size(); ++j) {
+                lamp_stamp_distance[i].push_back(make_pair(j, CGAL::squared_distance(stamps[i], lamps[j])));
+            }
+        }
+
         /******************** create & solve linear program  ********************/
+        // cerr << "Pre lp\n";
+    lpcode:
+
         Program lp (CGAL::SMALLER,
                     true, 1,         /* lower boundary = 1; boundaries from input */
                     true, 4096);
 
         int constraint_index = 0;
 
+        // cerr << "set_a/b/r\n";
         for(int i=0; i < lamp_stamp_distance.size(); ++i) {
             for(int j=0; j < lamp_stamp_distance[i].size(); ++j) {
                 int lamp = lamp_stamp_distance[i][j].first;
@@ -126,6 +147,8 @@ int main()
             constraint_index += 2;
         }
 
+        // cerr << "set_c\n";
+
         /* what to minimise for */
         for(int i=0; i < lamps.size(); ++i) {
             lp.set_c(i, 1);
@@ -140,9 +163,5 @@ int main()
         } else {
             cout << "no\n";
         }
-
-
-
     }
-
 }
