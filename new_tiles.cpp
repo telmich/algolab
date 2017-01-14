@@ -57,7 +57,7 @@ bool is_next_field_available(field &plan, pair<int, int> pos)
     }
 //    cerr << "next field " << is_available << ": " << pos.first + 3 << " " << pos.second + 3 << " " << plan.size() << " " << plan[pos.first].size() << endl;
 
-    if(pos.first >= 6 || pos.second >= 6) { cerr << "BUG" ; exit(42); }
+//    if(pos.first >= 6 || pos.second >= 6) { cerr << "BUG" ; exit(42); }
 
     return is_available;
 
@@ -96,9 +96,19 @@ void mark_tile_used(field &plan, pair<int, int> pos)
 }
 
 
-int solve(field &plan, pair<int, int> pos)
+int solve(field &plan, field& results, pair<int, int> pos)
 {
     bool another_available;
+
+    cerr << "heeeee" << pos.first << " " << pos.second << "\n";
+    if(results[pos.first][pos.second] != -1) {
+        cerr << "<){}?\n";
+        return results[pos.first][pos.second];
+    }
+            cerr << "heeeee2\n";
+
+/* this should not be necessary, as always next field */
+//    res[pos.first][pos.second] = 0 ;
 
     /* find next field */
     while(!can_place_tile(plan, pos) && (another_available = is_next_field_available(plan, pos))) {
@@ -127,13 +137,13 @@ int solve(field &plan, pair<int, int> pos)
         pair<int, int> newpos = get_next_pos(plancopy, pos);
         cerr << ">>>> nextpos = " << newpos.first << " " << newpos.second << endl;
 
-        int used_it     = 1 + solve(plancopy, newpos);
-
-        int not_used_it = solve(plan, newpos);
+        int used_it     = 1 + solve(plancopy, results, newpos);
+        int not_used_it = solve(plan, results, newpos);
 
         res = max(used_it, not_used_it);
         cerr << "max for " << pos.first << " " << pos.second << " : " << res << ": " << used_it << "---" << not_used_it << endl;
     }
+    results[pos.first][pos.second] = res;
 
     return res;
 }
@@ -156,14 +166,14 @@ int main()
         cin >> h >> w;
 
         vector<vector <int> > plan(h, vector<int>(w));
-        for(int i=0; i< h; ++i) {
-            int ignoreme;
+        vector<vector <int> > results(h, vector<int>(w, -1));
 
+        for(int i=0; i< h; ++i) {
             for(int j=0; j < w; ++j) {
                 cin >> plan[i][j];
+                results[i][j] = -1;
             }
         }
-        cout << solve(plan, make_pair(1, 1)) << endl;
+        cout << solve(plan, results, make_pair(1, 1)) << endl;
     }
-
 }
