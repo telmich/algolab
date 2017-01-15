@@ -6,6 +6,9 @@
 #include <boost/graph/edmonds_karp_max_flow.hpp>
 #include <boost/graph/adjacency_list.hpp>
 
+#include <boost/graph/cycle_canceling.hpp>
+#include <boost/graph/find_flow_cost.hpp>
+
 /* cgal foo */
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
@@ -28,10 +31,15 @@ typedef adjacency_list<vecS, vecS, directedS,
                        property<edge_capacity_t, long,
                        property<edge_residual_capacity_t, long,
 
-                       property<edge_reverse_t, Traits::edge_descriptor> > > > Graph;
+                                property<edge_reverse_t, Traits::edge_descriptor,
+                                         property<edge_weight_t, long > > > > > Graph;
 
 
 typedef property_map<Graph,edge_capacity_t>::type EdgeCapacityMap;
+typedef property_map<Graph,edge_weight_t>::type WeightMap;
+
+//typedef property_map<Graph, edge_weight_t >::type           EdgeWeightMap;
+
 typedef property_map<Graph,edge_residual_capacity_t>::type ResidualCapacityMap;
 typedef property_map<Graph,edge_reverse_t>::type ReverseEdgeMap;
 typedef graph_traits<Graph>::vertex_descriptor Vertex;
@@ -67,9 +75,8 @@ void get_max_radius(vector<Point> &shooting, vector<Point> &hunter, vector<FT> &
     }
 }
 
-void addEdge (int from, int to , int c , EdgeCapacityMap &capacitymap,
-              ReverseEdgeMap &revedgemap,
-              Graph&G)
+void addEdge (int from, int to , int c , int w, EdgeCapacityMap &capacitymap,
+              ReverseEdgeMap &revedgemap, WeightMap &weightmap, Graph&G)
 {
     Edge e,reverseE;
     bool success;
@@ -77,11 +84,16 @@ void addEdge (int from, int to , int c , EdgeCapacityMap &capacitymap,
     tie(reverseE,success) = add_edge(to,from,G);
     capacitymap[e]=c;
     capacitymap[reverseE]=0;
+
     revedgemap[e]=reverseE;
     revedgemap[reverseE]=e;
+
+    weightmap[e] = w;
+    weightmap[reverseE] = -w;
+
 }
 
-int maxflow_to_asteroid(vector<Point> &shooting, vector<Point> &asteroid,
+bool maxflow_to_asteroid(vector<Point> &shooting, vector<Point> &asteroid,
                         vector<vector<FT> > &asteroid_shooting,
                         vector<int> density, vector<FT> &distance, int energy) {
 
@@ -89,18 +101,25 @@ int maxflow_to_asteroid(vector<Point> &shooting, vector<Point> &asteroid,
     EdgeCapacityMap capacitymap=get(edge_capacity,g);
     ReverseEdgeMap revedgemap=get(edge_reverse,g);
     ResidualCapacityMap rescapacitymap=get(edge_residual_capacity,g);
+    WeightMap weightmap=get(edge_weight,g);
 
     int offset_asteroid = shooting.size();
     int e_s = offset_asteroid + asteroid.size();
     int s = e_s+1;
     int t = s + 1;
 
+    int total_density = 0;
+    for(int i=0; i < density.size(); ++i) {
+        total_density += density[i];
+    }
+
     /* limiting edge for total energy */
-    addEdge(e_s, s, energy, capacitymap, revedgemap, g);
+    addEdge(e_s, s, energy, 0, capacitymap, revedgemap, weightmap, g);
+//    addEdge(e_s, s, total_density, 0, capacitymap, revedgemap, weightmap, g);
 
     /* edges from s to shooting */
     for(int i=0; i < shooting.size(); ++i) {
-        addEdge(s, i, energy, capacitymap, revedgemap, g);
+        addEdge(s, i, energy, 0, capacitymap, revedgemap, weightmap, g);
     }
 
     int cnt = 0;
@@ -109,16 +128,21 @@ int maxflow_to_asteroid(vector<Point> &shooting, vector<Point> &asteroid,
         for(int j=0; j < shooting.size(); ++j) {
             /* create an edge */
             if(asteroid_shooting[j][i] < distance[j]) {
-                addEdge(j, offset_asteroid + i, energy, capacitymap, revedgemap, g);
+                addEdge(j, offset_asteroid + i, energy, distance[j], capacitymap, revedgemap, weightmap, g);
                 ++cnt;
             }
         }
 
         /* edge from asteroid to target */
-        addEdge(offset_asteroid + i, t, density[i], capacitymap, revedgemap, g);
+        addEdge(offset_asteroid + i, t, density[i], 0, capacitymap, revedgemap, weightmap, g);
     }
 
-    return  edmonds_karp_max_flow(g, e_s, t);
+    int flow = edmonds_karp_max_flow(g, e_s, t);
+    cycle_canceling(g);
+    int cost = find_flow_cost(g);
+    cerr << flow << " " << total_density << " " << cost << " " << energy << endl;
+
+    return flow == total_density;
 }
 
 bool all_destroyable_without_hunters(vector<vector<FT> > &asteroid_shooting, vector<int> &density, int energy)
@@ -132,7 +156,10 @@ bool all_destroyable_without_hunters(vector<vector<FT> > &asteroid_shooting, vec
                 FT bla = 1;
                 FT min_of_distance = CGAL::max(asteroid_shooting[j][i], bla);
 
-                lp.set_a(j, constraint_index, 1/min_of_distance);
+                if(min_of_distance > 0)
+                    lp.set_a(j, constraint_index, 1/min_of_distance);
+                else
+                    lp.set_a(j, constraint_index, 1);
 //                cerr << 1/min_of_distance << " ";
             }
 //            cerr << " >= " << density[i];
@@ -153,7 +180,7 @@ bool all_destroyable_without_hunters(vector<vector<FT> > &asteroid_shooting, vec
         Solution sol = CGAL::solve_quadratic_program(lp, ET());
         assert (sol.solves_quadratic_program(lp));
 
-        return (sol.is_optimal());
+        return !(sol.is_infeasible());
 }
 
 int main()
@@ -197,21 +224,20 @@ int main()
 
 
         if( b == 0 ) { /* no triangulation possible / necessary */
-            cout << "A ";
+//            cout << "A ";
             if(all_destroyable_without_hunters(asteroid_shooting, density, e)) {
                 cout << "n\n";
             } else {
                 cout << "y\n";
             }
         } else {
-            cout << "B ";
+//            cout << "B ";
             vector<FT> shooting_radius(s);
             get_max_radius(shooting, hunter, shooting_radius);
-            int tmp = maxflow_to_asteroid(shooting, asteroid, asteroid_shooting,
+            bool ok = maxflow_to_asteroid(shooting, asteroid, asteroid_shooting,
                                           density, shooting_radius, e);
 
-            //     cerr << tmp << " " << sum_densities << endl;
-            if(tmp == sum_densities) {
+            if(ok) {
                 cout << "y\n";
             } else {
                 cout << "n\n";
