@@ -22,10 +22,10 @@ typedef property_map<Graph, edge_capacity_t>::type Capacity;
 typedef property_map<Graph, edge_reverse_t>::type ReverseEdge;
 
 
-void my_add_edge(Graph &g, int from, int to, int capacity, Capacity &c, ReverseEdge &r, bool hack)
+void my_add_edge(Graph &g, int from, int to, int capacity, Capacity &c, ReverseEdge &r)
 {
     graph_traits<Graph>::edge_descriptor this_edge, reverse_edge;
-    cerr << "in add: " << from << " " << to << ": " << capacity << "\n";
+    // cerr << "in add: " << from << " " << to << ": " << capacity << "\n";
 
     bool ok, reverse_ok;
 
@@ -38,16 +38,11 @@ void my_add_edge(Graph &g, int from, int to, int capacity, Capacity &c, ReverseE
     }
 
     c[this_edge] = capacity;
-    if(hack) {
-        c[reverse_edge] = capacity;
-    } else {
-        c[reverse_edge] = 0;
-    }
+    c[reverse_edge] = 0;
 
     r[this_edge] = reverse_edge;
     r[reverse_edge] = this_edge;
 
-//    cerr << "out add\n";
 }
 
 int my_edge_index(int x_col, int y_row, int cols, int rows, bool outgoing)
@@ -57,8 +52,6 @@ int my_edge_index(int x_col, int y_row, int cols, int rows, bool outgoing)
     if(outgoing) {
         res += rows*cols;
     }
-
-//     cerr << "idx: " << x_col << " " << y_row << " " << res << endl;
 
     return res;
 }
@@ -71,32 +64,23 @@ void connect_to_all_bigger_valid_vertices(int x, int y, int m, int n,
 
     if(x != (m-1)) { /* right */
         vertex_other = my_edge_index(x+1, y, m, n, false);
-        my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r, true);
+        my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r);
     }
 
     if(y != (n-1)) { /* bottom */
         vertex_other = my_edge_index(x, y+1, m, n, false);
-        my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r, true);
+        my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r);
     }
 
-    return;
+    if(x != 0) { /* left */
+        vertex_other = my_edge_index(x-1, y, m, n, false);
+        my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r);
+    }
 
-    // if(x != 0) { /* try left */
-    //     vertex_other = my_edge_index(x-1, y, m, n, false);
-    //     if(vertex_other > vertex_from_incoming) {
-    //         my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r, true);
-    //     }
-    // }
-
-    // if(x != (m-1)) { /* try right */
-    //     vertex_other = my_edge_index(x+1, y, m, n, false);
-    //     if(vertex_other > vertex_from_incoming) {
-    //         my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r, true);
-    //     }
-    // }
-
-
-
+    if(y != 0) { /* top */
+        vertex_other = my_edge_index(x, y-1, m, n, false);
+        my_add_edge(g, vertex_from_outgoing, vertex_other, 1, c, r);
+    }
 }
 
 
@@ -113,6 +97,12 @@ int main()
         int m, n, k, c;
         cin >> m >> n >> k >> c;
 
+        /******************** sanity check ********************/
+        if(n == 0 || m == 0 || k == 0) {
+            cout << "0\n";
+            continue;
+        }
+
         vector<pair <int, int> > positions(k);
         for(int i=0; i < k; ++i) {
             int x,y;
@@ -123,6 +113,8 @@ int main()
         }
 
         cerr << "m n k c: " << m << " " << n << " " << k << " " << c <<  endl;
+
+
         /******************** build graph ********************/
         Graph g;
         Capacity capacity = get(edge_capacity, g);
@@ -136,20 +128,19 @@ int main()
         int s = knight_offset + positions.size();
         int t = s+1;
 
-        /* Setup source to knights: OK */
+        /* Setup source to knight POSITIONS!: OK */
         for(int i=0; i < positions.size(); ++i) {
-            int this_vertex = knight_offset + i;
-            my_add_edge(g, s, this_vertex, 1, capacity, rev, false);
+            int to_vertex = my_edge_index(positions[i].first, positions[i].second, m, n, false);
+            my_add_edge(g, s, to_vertex, 1, capacity, rev);
         }
 
-
-        /* Setup limiting edges for every inner vertex: likely ok */
+        /* Setup limiting edges for every inner vertices */
         for(int i=0; i < m; ++i) {
             for(int j=0; j <n ; ++j) {
                 int from_vertex = my_edge_index(i, j, m, n, false);
                 int to_vertex =   my_edge_index(i, j, m, n, true);
 
-                my_add_edge(g, from_vertex, to_vertex, c, capacity, rev, false);
+                my_add_edge(g, from_vertex, to_vertex, c, capacity, rev);
             }
         }
 
@@ -158,34 +149,27 @@ int main()
             int from_vertex1 = my_edge_index(i, 0, m, n, true);
             int from_vertex2 = my_edge_index(i, n-1, m, n, true);
 
-            my_add_edge(g, from_vertex1, t, 1, capacity, rev, false);
-            my_add_edge(g, from_vertex2, t, 1, capacity, rev, false);
+            my_add_edge(g, from_vertex1, t, 1, capacity, rev);
+            my_add_edge(g, from_vertex2, t, 1, capacity, rev);
         }
 
-        /* Setup OUTGOING edges in first and last column EXCLUDING FIRST AND LAST ROW! */
-        for(int i=1; i < (n-1); ++i) {
+        /* Setup OUTGOING edges in first and last column */
+        for(int i=0; i < n; ++i) {
             int from_vertex1 = my_edge_index(0,   i, m, n, true);
             int from_vertex2 = my_edge_index(m-1, i, m, n, true);
 
-            my_add_edge(g, from_vertex1, t, 1, capacity, rev, false);
-            my_add_edge(g, from_vertex2, t, 1, capacity, rev, false);
+            my_add_edge(g, from_vertex1, t, 1, capacity, rev);
+            my_add_edge(g, from_vertex2, t, 1, capacity, rev);
         }
 
-        /* Create INNER vertices WITHOUT messing up ;-) */
-        cerr << " INNNNNNNER\n";
+        /* Create INNER edges: all to all neighbours */
         for(int i=0; i < m; ++i) {
             for(int j=0; j <n ; ++j) {
                 connect_to_all_bigger_valid_vertices(i, j, m, n, g, capacity, rev);
             }
         }
 
-        /* Setup capacity & reverse everywhere */
-        graph_traits<Graph>::out_edge_iterator ei, e_end;
-
-        cerr << "end..: " << s << " " << t << "\n";
         int flow = push_relabel_max_flow(g, s, t);
         cout << flow << endl;
-
     }
-
 }

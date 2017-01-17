@@ -13,6 +13,7 @@ typedef CGAL::Gmpz ET;
 typedef CGAL::Quadratic_program<int> Program;
 typedef CGAL::Quadratic_program_solution<ET> Solution;
 
+
 double floor_to_double(const CGAL::Quotient<ET> &x)
 {
     double a = std::floor(CGAL::to_double(x));
@@ -30,6 +31,7 @@ int main()
     {
         int n, m;
         cin >> n >> m;
+        cerr << "nm: " << n << " " << m << endl;
 
         if(!n && !m) break;
 
@@ -57,44 +59,69 @@ int main()
 
         /******************** get optimal value per person ********************/
 
-        for(p=0; p < m; ++p) {
-            Program lp (CGAL::LARGER, true, 0, false, 0);
+        for(int p=0; p < m; ++p) {
+            Program lp (CGAL::SMALLER, true, 0, false, 0);
+
+            /* enter the covariance table */
             for (int i = 0; i < n; ++i) {
-                for (int j = 0; j <= i; ++j) { // enforce j <= i -----??????
+                for (int j = 0; j < n; ++j) {
+//                for (int j = 0; j <= i; ++j) { // enforce j <= i -----??????
+                    cerr << covariance[i][j] << " ";
                     lp.set_d(i, j, 2 * covariance[i][j]);
                 }
+                cerr << endl;
             }
 
+            /* limit all spendings to maximum of our budget */
             for (int i = 0; i < n; ++i) {
                 lp.set_a(i, 0, portfolio_cost[i]);
-                lp.set_a(i, 1, portfolio_return[i]);
             }
-
-            lp.set_r(0, SMALLER);
-            lp.set_r(1, LARGER);
-
             lp.set_b(0, person_cost[p]);
-            lp.set_b(1, person_return[
 
-                Solution s = solve_quadratic_program(p, ET());
-                // This is a costly action, don't do it when submitting!
-                // assert(s.solves_quadratic_program(p));
+            /* minimise negative returns */
+            for (int i = 0; i < n; ++i) {
+                lp.set_c(i, -portfolio_cost[i]);
+            }
 
-                if (s.is_optimal() && s.objective_value() <= investors[i].maxvar) {
-                    result[i] = true;
+            Solution solution = solve_quadratic_program(lp, ET());
+
+            if (solution.is_infeasible() || solution.is_unbounded()) {
+                cerr << "I made a mistake\n";
+                continue;
+            } else {
+                cout << solution;
+
+                CGAL::Quotient<ET> tmp = 0;
+
+                Solution::Optimality_certificate_iterator y =  solution.optimality_certificate_begin();
+
+                int len = solution.optimality_certificate_end() - solution.optimality_certificate_begin();
+                double res = 0;
+
+                int i = 0;
+                for(auto it = solution.variable_values_begin(); it != solution.variable_values_end(); ++it) {
+                    tmp += (*it) * portfolio_return[i];
                 }
+//                 for(int i=0; i <n; ++i) {
+//                     cout << i << " " << len  << " vs " << n << endl;
+//                     tmp += y[i] * portfolio_return[i];;
+// //                    res += floor_to_double(y[i]);
+// //                    cout << y[i] << endl;
+//                 }
+                cerr << "post add loop\n";
+                res = floor_to_double(tmp);
+                cout << res << endl;
             }
 
 
+//                    return_for_customer += floor_to_double(*it) * portfolio_return[i];
+                    // floor_to_double(*it);
 
 
-
-
+            //             if (s.is_optimal() && s.objective_value() <= investors[i].maxvar) {
+            //         result[i] = true;
+            // }
         }
-
-
-
-
 
     }
 
