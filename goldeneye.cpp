@@ -165,7 +165,7 @@ int main()
         for(auto it=my_jammer_distance_list.begin(); it != my_jammer_distance_list.end(); ++it) {
             if(it->distance > p) break;
             ufp.union_set(it->a, it->b);
-            cerr << "Union of " << it->a << " " << it->b << endl;
+//            cerr << "Union of " << it->a << " " << it->b << endl;
         }
         /******************** find missions which work ********************/
         FT a, b;
@@ -173,7 +173,6 @@ int main()
 
         Uf ufa(n);
         Uf ufb(n);
-
 
         auto it_a = my_jammer_distance_list.begin();
         auto it_b = my_jammer_distance_list.begin();
@@ -183,7 +182,7 @@ int main()
             Vertex v2 = t.nearest_vertex(mission_end[i]);
 
             FT distance_a = CGAL::squared_distance(v1->point(), mission_start[i]);
-            FT distance_b = CGAL::squared_distance(v2->point(), mission_start[i]);
+            FT distance_b = CGAL::squared_distance(v2->point(), mission_end[i]);
 
             FT max_dist = 4* max(distance_a, distance_b);
 
