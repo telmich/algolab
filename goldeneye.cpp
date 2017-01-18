@@ -75,21 +75,37 @@ for 3)
 using namespace std;
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+
+#include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Delaunay_triangulation_2<K> Triangulation;
+typedef CGAL::Triangulation_vertex_base_with_info_2<unsigned, K>    Vb;
+typedef CGAL::Triangulation_data_structure_2<Vb>                    Tds;
+typedef CGAL::Delaunay_triangulation_2<K, Tds>                      Triangulation;
 
 typedef Triangulation::Point Point;
 typedef Triangulation::Edge_iterator Edge_iterator;
 typedef Triangulation::Edge Edge;
+typedef Triangulation::Vertex_handle Vertex;
 
 typedef K::FT FT;
+typedef std::pair<K::Point_2,int> IPoint;
 
-bool operator<(pair<Edge, FT>  a, pair<Edge, FT > b)
+#include <boost/pending/disjoint_sets.hpp>
+typedef boost::disjoint_sets_with_storage<> Uf;
+
+struct jamdistance
 {
-    return a.second < b.second;
+    int a, b;
+    FT distance;
+};
+
+inline bool operator<(jamdistance a,  jamdistance b)
+{
+    return a.distance < b.distance;
 }
+
 
 int main()
 {
@@ -104,13 +120,18 @@ int main()
         int n, m, p;
         cin >> n >> m >> p;
 
-        vector<Point> jammer(n);
+        vector<IPoint> jammer(n);
 
         vector<Point> mission_start(m);
         vector<Point> mission_end(m);
 
-        for(int i=0; i < n; ++i)
-            cin >> jammer[i];
+        for(int i=0; i < n; ++i) {
+            int x, y;
+
+            cin >> x >> y;
+
+            jammer[i] = make_pair(Point(x, y), i);
+        }
 
         for(int i=0; i < m; ++i) {
             cin >> mission_start[i];
@@ -121,22 +142,84 @@ int main()
         Triangulation t;
         t.insert(jammer.begin(), jammer.end());
 
-
-        /******************** connected components / union find ********************/
-        vector<pair<Edge, FT> > my_edge_list;
+        /******************** sort edges by length ********************/
+        vector<jamdistance> my_jammer_distance_list;
 
         for (Edge_iterator ei = t.finite_edges_begin(); ei != t.finite_edges_end(); ++ei) {
-
             Triangulation::Vertex_handle v1 = ei->first->vertex((ei->second + 1) % 3);
             Triangulation::Vertex_handle v2 = ei->first->vertex((ei->second + 2) % 3);
-            FT my_distance = CGAL::squared_distance(v1->point(), v2->point());
 
-            my_edge_list.push_back(make_pair(*ei, my_distance));
+            FT my_distance = t.segment(*ei).squared_length();
+
+            jamdistance d1;
+            d1.a = v1->info();
+            d1.b = v2->info();
+            d1.distance = my_distance;
+
+            my_jammer_distance_list.push_back(d1);
+        }
+        sort(my_jammer_distance_list.begin(), my_jammer_distance_list.end());
+
+        /******************** connected components / union find ********************/
+        Uf ufp(n);
+        for(auto it=my_jammer_distance_list.begin(); it != my_jammer_distance_list.end(); ++it) {
+            if(it->distance > p) break;
+            ufp.union_set(it->a, it->b);
+            cerr << "Union of " << it->a << " " << it->b << endl;
+        }
+        /******************** find missions which work ********************/
+        FT a, b;
+        a = b = 0;
+
+        Uf ufa(n);
+        Uf ufb(n);
+
+
+        auto it_a = my_jammer_distance_list.begin();
+        auto it_b = my_jammer_distance_list.begin();
+
+        for(int i=0; i < m; ++i) {
+            Vertex v1 = t.nearest_vertex(mission_start[i]);
+            Vertex v2 = t.nearest_vertex(mission_end[i]);
+
+            FT distance_a = CGAL::squared_distance(v1->point(), mission_start[i]);
+            FT distance_b = CGAL::squared_distance(v2->point(), mission_start[i]);
+
+            FT max_dist = 4* max(distance_a, distance_b);
+
+            if(max_dist <= p && ufp.find_set(v1->info()) == ufp.find_set(v2->info()) ) {
+                cout << "y";
+
+                /* update b: minimium size for this */
+                if(max_dist > b) b = max_dist;
+
+                /* find what?????????? => merge stations into same union until???   */
+                while(it_b != my_jammer_distance_list.end() &&
+                      ufb.find_set(v1->info()) != ufb.find_set(v2->info())) {
+                    ++it_b;
+
+                    ufb.union_set(it_b->a, it_b->b);
+                }
+            } else {
+                cout << "n";
+            }
+
+            if(max_dist > a) a = max_dist;
+
+            /* merge all into aaaaaaaaaaaaa??????????????? */
+            while(it_a != my_jammer_distance_list.end() &&
+                  ufb.find_set(v1->info()) != ufb.find_set(v2->info())) {
+                ++it_a;
+
+                ufb.union_set(it_a->a, it_a->b);
+            }
+
 
         }
-        sort(my_edge_list.begin(), my_edge_list.end());
-
-
+        /*  if we moved it, move it back once -------> no sqrt here???? */
+        if (it_a != my_jammer_distance_list.begin() && (it_a-1)->distance > a) a = (it_a-1)->distance;
+        if (it_b != my_jammer_distance_list.begin() && (it_b-1)->distance > b) b = (it_b-1)->distance;
+        cout << "\n" << a << "\n" << b << "\n";
 
     }
 
