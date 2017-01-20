@@ -12,8 +12,6 @@
 #include <boost/graph/cycle_canceling.hpp>
 
 
-
-
 using namespace std;
 using namespace boost;
 
@@ -24,7 +22,6 @@ typedef adjacency_list<vecS, vecS, directedS,
                                 property<edge_residual_capacity_t, long,
                                          property<edge_weight_t, long,
                                                   property<edge_reverse_t, Traits::edge_descriptor> > > > > Graph;
-
 
 typedef graph_traits < Graph >::edge_descriptor Edge;
 
@@ -57,7 +54,6 @@ void my_add_edge(Graph &g, int from, int to, int capacity, Capacity &c, int weig
     w[this_edge] = weight;
     w[reverse_edge] = -weight;
 }
-
 
 int main()
 {
