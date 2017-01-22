@@ -11,26 +11,30 @@ using namespace boost;
 
 /* Triangulation foooooo */
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Exact_predicates_exact_constructions_kernel KEXACT;
+
 typedef CGAL::Delaunay_triangulation_2<K> Triangulation;
 typedef Triangulation::Vertex_circulator Vertex_circulator;
 
 typedef Triangulation::Point             Point;
 typedef Triangulation::Vertex_handle     Vertex;
+
 typedef K::FT FT;
+typedef KEXACT::FT FTE;
 
 /* LP */
 #include <CGAL/basic.h>
 #include <CGAL/QP_models.h>
 #include <CGAL/QP_functions.h>
-#include <CGAL/Gmpzf.h>
+//#include <CGAL/Gmpzf.h>
+#include <CGAL/Gmpq.h>
 
 // choose exact floating-point type
-typedef CGAL::Gmpzf ET;
+typedef CGAL::Gmpq ET;
 
 /* LP */
-typedef CGAL::Quadratic_program<int> Program;
+typedef CGAL::Quadratic_program<ET> Program;
 typedef CGAL::Quadratic_program_solution<ET> Solution;
-
 
 int main()
 {
@@ -65,16 +69,17 @@ int main()
         }
 
         /******************** get distances: shooting <-> hunter ********************/
-
-        vector<FT> max_radius_shot(s, -1);
+        vector<ET> max_radius_shot(s, -1);
 
         if(b > 0) {
+            // cerr << "pre shooting / hunter triangulation\n";
             Triangulation trg;
             trg.insert(hunter.begin(), hunter.end());
 
             for(int i=0; i < shooting.size() ; ++i) {
                 Vertex v = trg.nearest_vertex(shooting[i]);
-                FT dist = CGAL::squared_distance(hunter[i], v->point());
+
+                ET dist = CGAL::squared_distance(shooting[i], v->point());
 
                 if(max_radius_shot[i] == -1) {
                     max_radius_shot[i] = dist;
@@ -89,7 +94,7 @@ int main()
         /******************** get distances: shooting <-> asteroid ********************/
 
         /********* 30* 10*4 -> 3*10^5 *******/
-        vector<vector<FT> > asteroid_shooting(a, vector<FT>(s));
+        vector<vector<ET> > asteroid_shooting(a, vector<ET>(s));
         vector<vector<bool> > asteroid_shooting_reachable(a, vector<bool>(s, true));
 
         for(int i=0; i < asteroid.size(); ++i) {
@@ -97,7 +102,7 @@ int main()
                 asteroid_shooting[i][j] = CGAL::squared_distance(asteroid[i], shooting[j]);
 
                 if(b > 0) {
-                    if(asteroid_shooting[i][j] > max_radius_shot[j]) {
+                    if(asteroid_shooting[i][j] >= max_radius_shot[j]) {
                         asteroid_shooting_reachable[i][j] = false;
                     }
                 }
@@ -116,10 +121,10 @@ int main()
         for(int i = 0; i < asteroid_shooting.size(); ++i) {
             bool has_one_constraint = false;
 
-            cerr << "A" << constraint_index << ": ";
+            // // cerr << "A" << constraint_index << ": ";
 
             for(int j=0; j < asteroid_shooting[i].size(); ++j) {
-                cerr << "e" << j << "*" << 1/asteroid_shooting[i][j]  << " ";
+                // // cerr << "e" << j << "*" << 1/asteroid_shooting[i][j]  << " ";
 
                 if(asteroid_shooting_reachable[i][j]) {
                     lp.set_a(j, constraint_index, 1/asteroid_shooting[i][j]);
@@ -128,7 +133,7 @@ int main()
             }
 
             if(has_one_constraint) {
-                cerr << " >= " << density[i] << endl;
+                // // cerr << " >= " << density[i] << endl;
                 lp.set_b(constraint_index, density[i]);
             } else {
                 /* no reachable shots -- exit if density > 0 */
@@ -147,29 +152,28 @@ int main()
         }
 
         /* Limit total energy of all SHOTS to maximum of energy */
-        cerr << "A" << constraint_index << ": ";
+        // // cerr << "A" << constraint_index << ": ";
         for(int j=0; j < shooting.size(); ++j) {
             lp.set_a(j, constraint_index, 1);
 
-            cerr << "e" << j << " ";
+            // // cerr << "e" << j << " ";
 
             /* what to minimise -- stricly speaking not required? */
-            lp.set_c(j, 1);
+//            lp.set_c(j, 1);
         }
-        cerr << " <= " << e << endl;
+        // // cerr << " <= " << e << endl;
         lp.set_r(constraint_index, CGAL::SMALLER);
         lp.set_b(constraint_index, e);
 
-        Solution sol = CGAL::solve_quadratic_program(lp, ET());
+        // cerr << "pre lp: " << constraint_index << " constraints " << shooting.size() << " vars\n";
+        Solution sol = CGAL::solve_linear_program(lp, ET());
 
-        cerr << sol;
+        // // cerr << sol;
 
         if(sol.is_optimal()) {
             cout << "y\n";
         } else {
             cout << "n\n";
         }
-
     }
-
 }
