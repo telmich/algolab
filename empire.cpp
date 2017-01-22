@@ -1,187 +1,36 @@
 #include <iostream>
 
-/* Graph  / flow */
-#include <string>
-#include <boost/config.hpp>
-#include <boost/graph/edmonds_karp_max_flow.hpp>
-#include <boost/graph/adjacency_list.hpp>
-
-#include <boost/graph/cycle_canceling.hpp>
-#include <boost/graph/find_flow_cost.hpp>
-
 /* cgal foo */
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Delaunay_triangulation_2.h>
 
+#include <CGAL/Delaunay_triangulation_2.h>
 
 using namespace std;
 using namespace boost;
 
-
+/* Triangulation foooooo */
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Delaunay_triangulation_2<K> Triangulation;
 typedef Triangulation::Vertex_circulator Vertex_circulator;
+
 typedef Triangulation::Point             Point;
-typedef Triangulation::Vertex_handle     TVertex;
-
-
-typedef adjacency_list_traits<vecS, vecS, directedS> Traits;
-typedef adjacency_list<vecS, vecS, directedS,
-                       property<vertex_name_t, std::string>,
-                       property<edge_capacity_t, long,
-                       property<edge_residual_capacity_t, long,
-
-                                property<edge_reverse_t, Traits::edge_descriptor,
-                                         property<edge_weight_t, long > > > > > Graph;
-
-
-typedef property_map<Graph,edge_capacity_t>::type EdgeCapacityMap;
-typedef property_map<Graph,edge_weight_t>::type WeightMap;
-
-//typedef property_map<Graph, edge_weight_t >::type           EdgeWeightMap;
-
-typedef property_map<Graph,edge_residual_capacity_t>::type ResidualCapacityMap;
-typedef property_map<Graph,edge_reverse_t>::type ReverseEdgeMap;
-typedef graph_traits<Graph>::vertex_descriptor Vertex;
-typedef graph_traits<Graph>::edge_descriptor Edge;
+typedef Triangulation::Vertex_handle     Vertex;
+typedef K::FT FT;
 
 /* LP */
 #include <CGAL/basic.h>
 #include <CGAL/QP_models.h>
 #include <CGAL/QP_functions.h>
+#include <CGAL/Gmpzf.h>
 
-// #include <CGAL/Gmpz.h>
-// typedef CGAL::Gmpz ET; /* WHY??? */
-
-
-// typedef K::Point_2 Point;
-typedef K::FT FT;
-typedef K::FT ET; /* might need to change?? */
+// choose exact floating-point type
+typedef CGAL::Gmpzf ET;
 
 /* LP */
 typedef CGAL::Quadratic_program<int> Program;
 typedef CGAL::Quadratic_program_solution<ET> Solution;
 
-
-void get_max_radius(vector<Point> &shooting, vector<Point> &hunter, vector<FT> &distance)
-{
-    Triangulation t;
-    t.insert(hunter.begin(), hunter.end());
-
-    /* get maximal radius for every shot */
-    for (int i=0; i < shooting.size(); ++i) {
-        TVertex v = t.nearest_vertex(shooting[i]);
-        distance[i] = CGAL::squared_distance(shooting[i], v->point());
-    }
-}
-
-void addEdge (int from, int to , int c , int w, EdgeCapacityMap &capacitymap,
-              ReverseEdgeMap &revedgemap, WeightMap &weightmap, Graph&G)
-{
-    Edge e,reverseE;
-    bool success;
-    tie(e,success) = add_edge(from,to,G);
-    tie(reverseE,success) = add_edge(to,from,G);
-    capacitymap[e]=c;
-    capacitymap[reverseE]=0;
-
-    revedgemap[e]=reverseE;
-    revedgemap[reverseE]=e;
-
-    weightmap[e] = w;
-    weightmap[reverseE] = -w;
-
-}
-
-bool maxflow_to_asteroid(vector<Point> &shooting, vector<Point> &asteroid,
-                        vector<vector<FT> > &asteroid_shooting,
-                        vector<int> density, vector<FT> &distance, int energy) {
-
-    Graph g;
-    EdgeCapacityMap capacitymap=get(edge_capacity,g);
-    ReverseEdgeMap revedgemap=get(edge_reverse,g);
-    ResidualCapacityMap rescapacitymap=get(edge_residual_capacity,g);
-    WeightMap weightmap=get(edge_weight,g);
-
-    int offset_asteroid = shooting.size();
-    int e_s = offset_asteroid + asteroid.size();
-    int s = e_s+1;
-    int t = s + 1;
-
-    int total_density = 0;
-    for(int i=0; i < density.size(); ++i) {
-        total_density += density[i];
-    }
-
-    /* limiting edge for total energy */
-    addEdge(e_s, s, energy, 0, capacitymap, revedgemap, weightmap, g);
-//    addEdge(e_s, s, total_density, 0, capacitymap, revedgemap, weightmap, g);
-
-    /* edges from s to shooting */
-    for(int i=0; i < shooting.size(); ++i) {
-        addEdge(s, i, energy, 0, capacitymap, revedgemap, weightmap, g);
-    }
-
-    int cnt = 0;
-
-    for(int i=0; i < asteroid.size(); ++i) {
-        for(int j=0; j < shooting.size(); ++j) {
-            /* create an edge */
-            if(asteroid_shooting[j][i] < distance[j]) {
-                addEdge(j, offset_asteroid + i, energy, distance[j], capacitymap, revedgemap, weightmap, g);
-                ++cnt;
-            }
-        }
-
-        /* edge from asteroid to target */
-        addEdge(offset_asteroid + i, t, density[i], 0, capacitymap, revedgemap, weightmap, g);
-    }
-
-    int flow = edmonds_karp_max_flow(g, e_s, t);
-    cycle_canceling(g);
-    int cost = find_flow_cost(g);
-    cerr << flow << " " << total_density << " " << cost << " " << energy << endl;
-
-    return flow == total_density;
-}
-
-bool all_destroyable_without_hunters(vector<vector<FT> > &asteroid_shooting, vector<int> &density, int energy)
-{
-        /******************** create LP ********************/
-        Program lp (CGAL::EQUAL, true, 0, true, energy);
-
-        int constraint_index = 0;
-        for(int i = 0; i < asteroid_shooting[0].size(); ++i) {
-            for(int j=0; j < asteroid_shooting.size(); ++j) {
-                FT bla = 1;
-                FT min_of_distance = CGAL::max(asteroid_shooting[j][i], bla);
-
-                if(min_of_distance > 0)
-                    lp.set_a(j, constraint_index, 1/min_of_distance);
-                else
-                    lp.set_a(j, constraint_index, 1);
-//                cerr << 1/min_of_distance << " ";
-            }
-//            cerr << " >= " << density[i];
-            lp.set_b(constraint_index, density[i]);
-            constraint_index++;
-        }
-
-        /* Limit total energy of all shots to maximum of energy */
-        for(int i=0; i < asteroid_shooting.size(); ++i) {
-            lp.set_a(i, constraint_index, 1);
-
-            /* what to minimise -- stricly speaking not required?*/
-            lp.set_c(i, 1);
-
-        }
-        lp.set_b(constraint_index, energy);
-
-        Solution sol = CGAL::solve_quadratic_program(lp, ET());
-        assert (sol.solves_quadratic_program(lp));
-
-        return !(sol.is_infeasible());
-}
 
 int main()
 {
@@ -215,33 +64,110 @@ int main()
             cin >> hunter[i];
         }
 
-        vector<vector<FT> > asteroid_shooting(s, vector<FT>(a));
-        for(int i=0; i < asteroid.size(); ++i) {
-            for(int j=0; j < shooting.size(); ++j) {
-                asteroid_shooting[j][i] = CGAL::squared_distance(shooting[i], asteroid[j]);
+        /******************** get distances: shooting <-> hunter ********************/
+
+        vector<FT> max_radius_shot(s, -1);
+
+        if(b > 0) {
+            Triangulation trg;
+            trg.insert(hunter.begin(), hunter.end());
+
+            for(int i=0; i < shooting.size() ; ++i) {
+                Vertex v = trg.nearest_vertex(shooting[i]);
+                FT dist = CGAL::squared_distance(hunter[i], v->point());
+
+                if(max_radius_shot[i] == -1) {
+                    max_radius_shot[i] = dist;
+                } else {
+                    if(max_radius_shot[i] > dist) {
+                        max_radius_shot[i] = dist;
+                    }
+                }
             }
         }
 
+        /******************** get distances: shooting <-> asteroid ********************/
 
-        if( b == 0 ) { /* no triangulation possible / necessary */
-//            cout << "A ";
-            if(all_destroyable_without_hunters(asteroid_shooting, density, e)) {
-                cout << "n\n";
-            } else {
-                cout << "y\n";
+        /********* 30* 10*4 -> 3*10^5 *******/
+        vector<vector<FT> > asteroid_shooting(a, vector<FT>(s));
+        vector<vector<bool> > asteroid_shooting_reachable(a, vector<bool>(s, true));
+
+        for(int i=0; i < asteroid.size(); ++i) {
+            for(int j=0; j < shooting.size(); ++j) {
+                asteroid_shooting[i][j] = CGAL::squared_distance(asteroid[i], shooting[j]);
+
+                if(b > 0) {
+                    if(asteroid_shooting[i][j] > max_radius_shot[j]) {
+                        asteroid_shooting_reachable[i][j] = false;
+                    }
+                }
+                /* adjust for the lp below */
+                if(asteroid_shooting[i][j] < 1) asteroid_shooting[i][j] = 1;
             }
+        }
+
+        /******************** solve constraints ********************/
+        Program lp (CGAL::LARGER, true, 0, true, e);
+
+        /******** e1/d11 + e2/d21 + ... >= density1 *********/
+        int constraint_index = 0;
+        bool unsolvable = false;
+
+        for(int i = 0; i < asteroid_shooting.size(); ++i) {
+            bool has_one_constraint = false;
+
+            cerr << "A" << constraint_index << ": ";
+
+            for(int j=0; j < asteroid_shooting[i].size(); ++j) {
+                cerr << "e" << j << "*" << 1/asteroid_shooting[i][j]  << " ";
+
+                if(asteroid_shooting_reachable[i][j]) {
+                    lp.set_a(j, constraint_index, 1/asteroid_shooting[i][j]);
+                    has_one_constraint = true;
+                }
+            }
+
+            if(has_one_constraint) {
+                cerr << " >= " << density[i] << endl;
+                lp.set_b(constraint_index, density[i]);
+            } else {
+                /* no reachable shots -- exit if density > 0 */
+                if(density[i] > 0) {
+                    unsolvable = true;
+                    break;
+                }
+            }
+
+            constraint_index++;
+        }
+
+        if(unsolvable) {
+            cout << "n\n";
+            continue;
+        }
+
+        /* Limit total energy of all SHOTS to maximum of energy */
+        cerr << "A" << constraint_index << ": ";
+        for(int j=0; j < shooting.size(); ++j) {
+            lp.set_a(j, constraint_index, 1);
+
+            cerr << "e" << j << " ";
+
+            /* what to minimise -- stricly speaking not required? */
+            lp.set_c(j, 1);
+        }
+        cerr << " <= " << e << endl;
+        lp.set_r(constraint_index, CGAL::SMALLER);
+        lp.set_b(constraint_index, e);
+
+        Solution sol = CGAL::solve_quadratic_program(lp, ET());
+
+        cerr << sol;
+
+        if(sol.is_optimal()) {
+            cout << "y\n";
         } else {
-//            cout << "B ";
-            vector<FT> shooting_radius(s);
-            get_max_radius(shooting, hunter, shooting_radius);
-            bool ok = maxflow_to_asteroid(shooting, asteroid, asteroid_shooting,
-                                          density, shooting_radius, e);
-
-            if(ok) {
-                cout << "y\n";
-            } else {
-                cout << "n\n";
-            }
+            cout << "n\n";
         }
 
     }
