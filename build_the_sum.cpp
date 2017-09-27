@@ -23,7 +23,6 @@ int main()
             sum += input;
         }
         cout << sum << endl;
-
     }
 
 }
