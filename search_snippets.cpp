@@ -16,10 +16,9 @@ int main() {
         cin >> n;
 
         vector<int> wordcount(n);
-        map<int, int> position;
+        map<long, long> position;
         set<int> missingword;
         vector<int> wordininterval(n, 0);
-
 
         for(int i=0; i<n; i++) {
             cin >> tmp;
@@ -35,43 +34,90 @@ int main() {
             }
         }
 
+        long lastpos = (position.rbegin())->first;
+
+        long min_interval_length = lastpos;
+
+        auto left = position.begin(), right = position.begin();
+
+        /* add first word "manually" */
+        missingword.erase(right->second);
+        wordininterval[right->second]++;
+
+        long cnt = 0;
+
         /* create window containing all words -- reduce/grow until end */
+        while( true ) {
+            ++cnt;
 
-        int lastpos = (position.rbegin())->first;
-        int left = 0, right = -1;
-        int min_interval_length = lastpos;
+            /* found minimum? exit quickly -- optional */
+            if((min_interval_length+1) == n) break;
 
-        while(right <= lastpos) {
+
+            /* abort latest when interval is smaller than query */
+            // if (left->first == lastpos) {
+            if ((lastpos - left->first) < n) {
+                // cout << "length exit\n";
+                break;
+            }
+
+            /* This should not happen / never happend */
+            // if(left->first > right->first) {
+            //     cout << "overlapping exit\n";
+            //     break;
+            // }
+
             /* grow interval if incomplete */
             if(!missingword.empty()) {
-                ++right; /* grow by one */
-                int wordtoadd = position[right];
+                ++right; /* go to next position */
 
-                /* if current count is zero, it must be missingword set */
+                /* we want to extend, but cannot -> time to exit */
+                if(right == position.end()) {
+                    break;
+                }
+
+                int wordtoadd = right->second;
+
+                // // cerr<< "growing: " << wordtoadd << " pos: " << right->first << endl;
+
+                /* if current count is zero, it must be missingword set -> remove */
                 if(wordininterval[wordtoadd] == 0) {
                     missingword.erase(wordtoadd);
                 }
 
                 wordininterval[wordtoadd]++; /* remember how often word is in interval */
+
                 /* if we just put all words in interval, update length */
                 if(missingword.empty()) {
-                    min_interval_length = min(min_interval_length, right-left);
+//                    // cerr<< "r/l: " << right->first << " " << left->first << endl;
+                    min_interval_length = min(min_interval_length, (right->first)-(left->first));
+                    // cerr<< "length: " << min_interval_length << endl;
                 }
+            } else { /* shrink interval */
+                int wordtoremove = left->second;
+                // cerr<< "shrinking: " << wordtoremove << " pos: " << left->first << endl;
 
-            } else { /* try to shrink interval */
-                int wordtoremove = position[left];
+                left++; /* AND actually move the left side */
+
                 wordininterval[wordtoremove]--;
                 if(wordininterval[wordtoremove] == 0) {
                     missingword.insert(wordtoremove);
                 } else {
                     /* still complete, try to update */
-                    min_interval_length = min(min_interval_length, right-left);
+                    min_interval_length = min(min_interval_length, (right->first)-(left->first));
+                    // cerr << "length: " << min_interval_length << endl;
                 }
+
             }
+
+            if(min_interval_length < 0) {
+                // cerr << "BUG - negative interval\n";
+                exit(42);
+            }
+
         }
         cout << min_interval_length+1 << endl;
-
-
+//        cout << "last: " << lastpos << " " << "cnt=" << cnt << endl;
     }
 
 }

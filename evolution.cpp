@@ -10,6 +10,10 @@ using namespace std;
 typedef map<int, forward_list<int>> NODES;
 typedef vector<bool> NODES_SEEN;
 typedef map<int, vector<pair<long, int>>> QUERY;
+
+/* could have used
+// typedef vector<vector<pair<long, int>>> QUERY;
+
 typedef vector<int> ANSWER;
 typedef map<int, long> AGE;
 

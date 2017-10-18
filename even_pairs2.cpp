@@ -23,41 +23,24 @@ int main()
         int n;
         cin >> n;
 
-        int even_pairs = 0;
         vector<int> values(n);
-        vector<int> psums(n);
-        int even_count = 0;
-        int odd_count = 0;
 
         for(int i=0; i < n; i++) {
             cin >> values[i];
         }
-        int cnt = 0;
 
         int even_seq = 0;
         int odd_seq  = 0;
 
         for(int i=0; i < n; i++) {
-            bool is_even = true;
-
-            for(int j=i; j < n; j++) {
-                cerr << values[j];
-                if(values[j] % 2 == 0) {
-                    if(is_even) {
-                        cnt++;
-                    }
-                } else {
-                    if(is_even) {
-                        is_even = false;
-                    } else {
-                        is_even = true;
-                        cnt++;
-                    }
-                }
+            if(values[i] == 0) {
+                even_seq += even_seq + 1;
+            } else {
+                even_seq += odd_seq;
+                odd_seq  += even_seq;
             }
-            cerr << endl;
-        }
-        cout << cnt << endl;
 
+        }
+        cout << even_seq << endl;
     }
 }
