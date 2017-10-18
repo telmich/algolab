@@ -29,15 +29,6 @@ int main()
 
             cin >> a >> b;
 
-            /* FIXME: correctly sort / add in ring */
-
-            /* overlapping -> ending is in b */
-            // if(a > b) {
-            //     long tmp = b;
-            //     b = a;
-            //     a = b;
-            // }
-
             jedi.push_back(make_pair(b, a));
         }
 
