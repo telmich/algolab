@@ -77,6 +77,8 @@ int main()
 
         cin >> n >> c >> f;
 
+        cerr << "F = " << f << endl;
+
         map<string, int> c2id;
 
         vector<vector<int>> student_characteristics(n);
@@ -113,7 +115,8 @@ int main()
                                  back_inserter(tmp));
 
                 char_count[i].push_back(tmp.size());
-                cerr << i << " shares with " << j << " " << tmp.size() << endl;
+                if(tmp.size() > f)
+                    cerr << i << " shares with " << j << " " << tmp.size() << endl;
             }
         }
 
@@ -128,13 +131,26 @@ int main()
         Vertex source = 0;
         Vertex sink   = (2*n)+1;
 
+        /* FIXME: this code is NOT correct */s!
         for(int i=0; i < n; i++) {
             eaG.addEdge(source, i+1, 1);
-            for(int j=i+1; j < n; j++) {
-                if(char_count[i][j-1] > f) {
-                    cerr << "Edge: " << i+1 << " " << n+j+1 << endl;
-                    eaG.addEdge(i+1, n+j+1, 1);
-                    eaG.addEdge(n+j+1, sink, 1);
+
+            int source_here = i+1;
+
+            for(int j=0; j < char_count[i].size(); j++) {
+
+                int target_here = i+j+1+n;
+
+                if(char_count[i][j] > f) {
+                    cerr << "Edge: " << source_here << " " << target_here << endl;
+                    cerr << "Edge: " << target_here << " " << source_here << endl;
+
+                    /* both can use the other one */
+                    eaG.addEdge(source_here, target_here, 1);
+                    eaG.addEdge(target_here, source_here, 1);
+
+                    /* but only the target goes to the sink */
+                    eaG.addEdge(target_here, sink, 1);
                 }
             }
         }

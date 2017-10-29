@@ -27,6 +27,8 @@ int main()
     int t;
     cin >> t;
 
+    ios_base::sync_with_stdio(false);
+
     while(t--) {
         int n, m;
         cin >> n >> m;
