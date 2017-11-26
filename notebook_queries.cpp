@@ -2,28 +2,65 @@
 #include <vector>
 #include <map>
 
+#include <boost/graph/directed_graph.hpp>
+
+typedef boost::directed_graph<> Graph;
+
+
 using namespace std;
+using namespace boost;
 
-int solve_query(vector<map<int, vector<int> > > ci,
-                vector<int> query,
-                vector<int> result) {
+vector<int> my_lower_bound;
+vector<int> my_upper_bound;
 
-    int k = ci.size();
+
+int solve_query(vector<int> &query,
+                vector<vector<vector<int>>> &ci)
+{
+
+    int k = query.size();
     int res = -1;
 
-    auto search = ci[0].find(query[0]);
-    if(search == ci[0].end()) return res;
+    /* every time we ask, we get back a vector of int */
 
-    /* now we got a vector of ints */
+    int cur;
 
     for(int i=0; i < k; i++) {
+        cur = query[i];
 
-        if(ci.find(query[i])
+        if(ci[i][cur-my_lower_bound[i]].size() > 0) {
+            cerr << "we can continue\n";
+
+        }
 
     }
 
+
+
+
+//     auto search = ci[0].find(query[0]);
+//     if(search == ci[0].end()) return res;
+
+//     /* now we got a vector of ints */
+
     return res;
 }
+
+void insert_result(vector<int> &resulttree, vector<vector<vector<int>>> &ci)
+{
+    int k = resulttree.size()-1; /* result is also in there */
+
+    int cur, next;
+
+    cur = resulttree[0];
+
+    for(int i=0; i < (k-1); i++) {
+        next = resulttree[i+1];
+
+        ci[i][cur-my_lower_bound[i]].push_back(next);
+    }
+}
+
 
 int main()
 {
@@ -35,44 +72,69 @@ int main()
         int k, n, q;
         cin >> k >> n >> q;
 
-        vector<int> lower_bound(k);
-        vector<int> upper_bound(k);
+        // vector<int> my_lower_bound(k);
+        // vector<int> upper_bound(k);
+
+        my_lower_bound.reserve(k);
+        my_upper_bound.reserve(k);
 
         vector<vector<int>> parameter(k);
 
-        for(int i=0; i < k; i++) {
-            cin >> lower_bound[i] >> upper_bound[i];
-            int vector_size = upper_bound[i] - lower_bound[i] + 1;
+        vector<vector<vector<int>>> ci(k);
 
-            cerr << "l/u: " << lower_bound[i] << " " << upper_bound[i] << " " << vector_size << "\n";
+        for(int i=0; i < k; i++) {
+            cin >> my_lower_bound[i] >> my_upper_bound[i];
+            int vector_size = my_upper_bound[i] - my_lower_bound[i] + 1;
+
+            cerr << "l/u: " << my_lower_bound[i] << " " << my_upper_bound[i] << " " << vector_size << "\n";
+            ci[i].reserve(vector_size);
+
             parameter[i].reserve(vector_size);
         }
 
         /* last vector only contains pointer to result */
 
-        int vector_size = upper_bound[k-1] - lower_bound[k-1] + 1;
+        int vector_size = my_upper_bound[k-1] - my_lower_bound[k-1] + 1;
         vector<int> ck(vector_size);
-
-        /* create k vectors for accessing elements */
 
         vector<int> result(n);
 
-        vector<map<int, vector<int> > > ci(k);
+//        vector<map<int, vector<int> > > ci(k);
+
+
+        // Graph g;
 
         /* experiments / measurements */
         for(int i=0; i < n; i++) {
-            vector<int> tmpstuff(k);
+            vector<int> tmpstuff(k+1);
             int tmp, tmp2;
 
-            cin >> tmp; /* that's c0 */
 
-            for(int j=0; j < k; j++) {
-                cin >> tmp2;
-                ci[j][tmp].push_back(tmp2);
-                tmp = tmp2;
+            for(int j=0; j < k+1; j++) {
+                cin >> tmpstuff[j];
             }
 
+            insert_result(tmpstuff, ci);
+
+
+            // for(int j=0; j < k; j++) {
+            //     cin >> tmp2;
+            //     ci[j][tmp].push_back(tmp2);
+            //     tmp = tmp2;
+            // }
+
         }
+
+        /* how to create unique vertices?
+           the input size is known per "experiment"
+           can we utilise k as a factor?
+        */
+
+        // boost::graph_traits<Graph>::vertex_descriptor v0 = g.add_vertex();
+        // boost::graph_traits<Graph>::vertex_descriptor v1 = g.add_vertex();
+
+        // g.add_edge(v0, v1);
+
 
         /* queries */
         for(int i=0; i < q; i++) {
@@ -82,7 +144,7 @@ int main()
                 cin >> tmp;
                 query[j] = tmp;
             }
-            cout << solve_query(ci, query, result);
+//            cout << solve_query(ci, query, result);
         }
 
     }

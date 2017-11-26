@@ -5,12 +5,16 @@
 #include <iostream>
 #include <string>
 #include <boost/graph/push_relabel_max_flow.hpp>
+#include <boost/graph/edmonds_karp_max_flow.hpp>
+
 #include <boost/graph/adjacency_list.hpp>
 
 #include <boost/graph/successive_shortest_path_nonnegative_weights.hpp> /* cycle cancelling, find_flow */
 #include <boost/graph/find_flow_cost.hpp>
 #include <boost/graph/cycle_canceling.hpp>
 
+#include <boost/graph/successive_shortest_path_nonnegative_weights.hpp>
+#include <boost/graph/find_flow_cost.hpp>
 
 using namespace std;
 using namespace boost;
@@ -33,7 +37,6 @@ typedef property_map<Graph, edge_residual_capacity_t>::type Residual;
 void my_add_edge(Graph &g, int from, int to, int capacity, Capacity &c, int weight, Weightmap &w, ReverseEdge &r)
 {
     graph_traits<Graph>::edge_descriptor this_edge, reverse_edge;
-    cerr << "in add: " << from << " " << to << ": " << capacity << "\n";
 
     bool ok, reverse_ok;
 
@@ -67,7 +70,7 @@ int main()
         int n, m, s;
         cin >> n >> m >> s;
 
-        cerr << "NM : " << n << " " << m << " " << s << endl;
+        cerr << "n: " << n << " m: " << m << " s:" << s << endl;
 
         vector<int> starting_pos(s);
         vector<int> exit_pos(s);
@@ -94,42 +97,44 @@ int main()
 
         int vertex_offset = n; /* used by rooms */
 
-        int start_flow = vertex_offset + s;
+        int start_flow = vertex_offset + 1;
         int target_flow = start_flow + 1;
-        cerr << "OFFSET: " << vertex_offset << " " << start_flow <<  "  " << target_flow << endl;
 
         /* Setup source to sweeper POSITIONS: 1 capacity, 0 cost */
         for(int i=0; i < starting_pos.size(); ++i) {
-            my_add_edge(g, start_flow, starting_pos[i], 1, capacity, 0, weights, rev);
+            my_add_edge(g, start_flow, starting_pos[i], 2, capacity, 0, weights, rev);
         }
 
-        cerr << "INNER EDGES: " << vertex_offset << endl;
         /* Use the given edges */
         for(int i=0; i < my_edge_list.size(); ++i) {
             int a = my_edge_list[i].first;
             int b = my_edge_list[i].second;
 
-            my_add_edge(g, a, b, 1, capacity, -1, weights, rev);
-            my_add_edge(g, b, a, 1, capacity, -1, weights, rev);
+            my_add_edge(g, a, b, 2, capacity, 0, weights, rev);
+            my_add_edge(g, b, a, 2, capacity, 0, weights, rev);
+
+            /* MINFLOW additions */
+            my_add_edge(g, start_flow, b, 1, capacity, 0, weights, rev);
+            my_add_edge(g, a, target_flow, 1, capacity, 0, weights, rev);
+
+            my_add_edge(g, start_flow, a, 1, capacity, 0, weights, rev);
+            my_add_edge(g, b, target_flow, 1, capacity, 0, weights, rev);
+
         }
 
-        cerr << "EXITS: " << vertex_offset << endl;
-        /* Setup exits: 1 capacity, 0 cost */
         for(int i=0; i < exit_pos.size(); ++i) {
-            my_add_edge(g, exit_pos[i], target_flow, 1, capacity, 0, weights, rev);
+            my_add_edge(g, exit_pos[i], target_flow, 2, capacity, 0, weights, rev);
         }
-        cerr << "pre graph\n";
 
-        int flow = push_relabel_max_flow(g, start_flow, target_flow);
-        cerr << "pre cancel\n";
-        cycle_canceling(g);
-        cerr << "pre cost\n";
-        int cost = find_flow_cost(g);
+        int flow = edmonds_karp_max_flow(g, start_flow, target_flow);
+//        successive_shortest_path_nonnegative_weights(g, start_flow, target_flow);
 
-        cost *= -1;
+//        cycle_canceling(g);
+//        int cost = find_flow_cost(g);
+        int cost = 42;
 
-        cout << "flow / cost = " << flow << " " << cost << "s/m/n = " << s << " " << m << " " << n << endl;
-        if(flow == s && cost == (2*m)) {
+        cerr << "flow: " << flow << " sweeper: " << s << " cost: " << cost << endl;
+        if(flow == ((2*s)+1)) {
             cout << "yes\n";
         } else {
             cout << "no\n";
@@ -137,3 +142,6 @@ int main()
 
     }
 }
+
+//        int flow = edmonds_karp_max_flow(g, start_flow, target_flow);
+//        cycle_canceling(g);

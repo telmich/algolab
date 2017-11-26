@@ -1,11 +1,95 @@
 #include <iostream>
 #include <vector>
+#include <climits>
+
+/*
+
+2 stacks
+n parcels
+
+bulky vs. heavy
+a1 at bottom
+
+
+cost: (Sa-ka) * (Sb-kb)
+
+Sa: sum volume
+Sb sum weights
+ka / kb: number of parcels
+
+- at least one parcel each time
+
+- minimise cost
+
+
+t <= 20
+n <= 1000 parcels => O(n^2) möglich? 10^6
+
+
+partial sum?
+  sum up all
+
+Monotonität vorhanden?
+
+Maximal 1000 Möglichkeiten links
+Maximal 1000 Möglichkeiten links
+
+
+take/no take!
+
+step 1:
+  take at least topmost from each
+
+
+Algorithmus
+
+from bottom?
+
+- take last
+ - (one only) from both
+ -
+
+recursion?
+
+
+sole n <= 6 problem!
+
+
+links 1, rechts 1...n-1
+ links 2..n & rechts n
+done
+
+
+
+links 1, rechts 1...n-2
+ -> links 2, rechts n-1
+ -> links 3..n, rechts n
+
+ -> links 2..n, rechts n-1, n
+
+
+
+
+
+*/
 
 using namespace std;
 
-void gen_cost_table(vector<int> &a_stack, vector<int> &b_stack, vector<vector <int> > &cost)
+int solve_recursive(vector<int> &a_stack, vector<int> &b_stack, int a_pos, int b_pos)
 {
 
+    /* select 1 ... leftover-1 from the left */
+    for(int i=1; i < a_stack.size() - 1; ++i) {
+    // (sa-ka) * (sb-kb);
+
+    }
+
+
+}
+
+
+void gen_cost_table(vector<int> &a_stack, vector<int> &b_stack, vector<vector <int> > &cost)
+{
     int sa = 0;
     int ka = 0;
     for(int a=a_stack.size() -1; a >= 0; --a) {
@@ -28,7 +112,6 @@ void gen_cost_table(vector<int> &a_stack, vector<int> &b_stack, vector<vector <i
 
 int get_cost(int a_start, int a_end, int b_start, int b_end, vector<vector <int> > &cost)
 {
-
     int res;
 
     if(b_start < a_start) { cerr << "BUG?\n"; return 0;  }

@@ -6,6 +6,10 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 
+
+#include <boost/graph/max_cardinality_matching.hpp>
+
+
 using namespace std;
 using namespace boost;
 
@@ -30,6 +34,9 @@ typedef property_map<Graph, edge_residual_capacity_t>::type Residual;
 
 typedef graph_traits < Graph >::edge_descriptor Edge;
 
+typedef adjacency_list<vecS, vecS, undirectedS> MatchGraph;
+
+
 void my_add_edge(int from, int to,
                 Capacity& capacity, int c,
                 Weightmap &weightmap, int w,
@@ -50,6 +57,20 @@ void my_add_edge(int from, int to,
     rev[edge2.first] = edge1.first;
 }
 
+struct agentpath
+{
+    int shelter_id;
+    int agent_id;
+    int length;
+};
+
+bool operator<(agentpath p1, agentpath p2)
+{
+    return p1.length < p2.length;
+}
+
+
+
 int main()
 {
 
@@ -62,7 +83,8 @@ int main()
         /******************** read data *******************/
         int n, m, a, s, c, d;
 
-        cin >> n  >>  m>>  a>>  s >>  c >>  d;
+        cin >> n  >>  m >>  a >>  s >>  c >>  d;
+//        cerr << "nmascd " << n << " " << m << endl;
 
         vector< std::tuple<int, int, int> > lift;
         vector< std::tuple<int, int, int> > slope;
@@ -93,6 +115,12 @@ int main()
             cin >> shelter[i];
         }
 
+        if(m == 0) {
+            cout << d << endl;
+            continue;
+        }
+
+
         /******************** create graph for distances *******************/
         Graph g1;
         Weightmap w1 = get(edge_weight, g1);
@@ -108,12 +136,13 @@ int main()
             /* lifts are both ways */
             tie(e, b) = add_edge(v1, v2, g1);
             w1[e] = weight;
-            cerr << e << " : w=" << w1[e] << endl;
+//            cerr << e << " : w=" << w1[e] << endl;
 
             tie(e, b) = add_edge(v2, v1, g1);
             w1[e] = weight;
-            cerr << e << " : w=" << w1[e] << endl;
+//            cerr << e << " : w=" << w1[e] << endl;
         }
+
 
         for(int i=0; i < slope.size(); ++i) {
             Edge e;
@@ -126,18 +155,23 @@ int main()
             /* slope is one way */
             tie(e, b) = add_edge(v1, v2, g1);
             w1[e] = weight;
-            cerr << e << " : w=" << w1[e] << endl;
+//            cerr << e << " : w=" << w1[e] << endl;
         }
-
+//        cerr << "after slope\n";
 
         /******************** Determine all shortest paths to shelters *******************/
-        vector<vector<int> > agent_shelter_distance(agent.size(), vector<int>(shelter.size()));
+        vector<agentpath> agent_shelter_distance;
+
+        int mindistance = INT_MAX;
+        int maxdistance = 0;
 
         for(int i=0; i < agent.size(); ++i) {
             std::vector<int> all_distances(num_vertices(g1));
 
+//            cerr << "pre dijstra\n";
             dijkstra_shortest_paths(g1, agent[i],
                                     distance_map(boost::make_iterator_property_map(all_distances.begin(), get(boost::vertex_index, g1))));
+//            cerr << "post dijsktsra\n";
 
             // graph_traits < Graph >::vertex_iterator vi, vend;
             // for (boost::tie(vi, vend) = vertices(g1); vi != vend; ++vi) {
@@ -145,48 +179,76 @@ int main()
             // }
             // std::cout << std::endl;
 
+            /* add all distances from this agent */
+
             for(int j=0; j < shelter.size(); ++j) {
-                agent_shelter_distance[i][j] = all_distances[shelter[j]];
-//                cerr << agent[i] << " ---> " << shelter[j] << ": " << all_distances[shelter[j]] << endl;
+                agentpath p;
+                p.agent_id = i;
+                p.shelter_id = j;
+                p.length = all_distances[shelter[j]];
+
+                if(p.length == INT_MAX) continue; /* ignore unreachable case */
+
+                if(p.length < mindistance) mindistance = p.length;
+                if(p.length > maxdistance) maxdistance = p.length;
+
+                agent_shelter_distance.push_back(p);
+
             }
         }
+//        cerr << "pre sort\n";
+
+        sort(agent_shelter_distance.begin(), agent_shelter_distance.end());
 
         /******************** Determine maximum time *******************/
-
-        Graph g2;
-        Capacity c2 = get(edge_capacity, g2);
-        ReverseEdge rev2 =  get(edge_reverse, g2);
-        Weightmap w2 = get(edge_weight, g2);
-        Residual resmap2 = get(edge_residual_capacity, g2);
-
         int shelter_offset = agent.size();
-        int my_sink = shelter_offset + shelter.size();
-        int my_source = my_sink + 1;
+        int shelter2_offset = shelter_offset + shelter.size();
+        int n_vertices = agent.size() + c*shelter.size();
 
-        /* FIXME: capacity = 2 */
+        int l = 0;
+        int r = INT_MAX;
 
-        for(int i=0; i < agent.size(); ++i) {
-            my_add_edge(my_source, i, c2, 1,
-                        w2, 0,
-                        rev2, g2);
-            for(int j=0; j < shelter.size(); ++j) {
-                /* no path */
-                if(agent_shelter_distance[i][j] == INT_MAX)
-                {
-                    continue;
+        /* binary search over max matchings */
+        while(l < r) {
+            int middle = l+(r-l)/2;
+            MatchGraph g2;
+
+//            cerr << "Trying middle = " << middle << endl;
+
+            for(int i=0; i < agent_shelter_distance.size(); ++i) {
+                /* stop if path is longer than max distance */
+//                cerr << agent_shelter_distance[i].length << " >? " <<max_matching_distance << endl;
+
+                /* this combination is clearly too high */
+                if(agent_shelter_distance[i].length > (middle+ c*d)) break;
+
+                /* add edges to copies of shelters */
+                int from_v = agent_shelter_distance[i].agent_id;
+                for(int j=0; j < c; ++j) {
+                    int to_v = agent_shelter_distance[i].shelter_id + shelter_offset + j * shelter.size();
+
+                    if (agent_shelter_distance[i].length + (j + 1) * d <= middle) { // Agent can enter in time.
+                        add_edge(from_v, to_v, g2); // Add the edge to G’’_t.
+                    }
                 }
-                my_add_edge(i, shelter_offset + j,
-                            c2, 1,
-                            w2, agent_shelter_distance[i][j],
-                            rev2, g2);
-
 
             }
+
+            vector<graph_traits<MatchGraph>::vertex_descriptor> mate(n_vertices);
+            edmonds_maximum_cardinality_matching(g2, &mate[0]);
+            int msize = matching_size(g2, &mate[0]);
+
+//            cerr << "msize : " << msize << endl;
+            /* not all agents in here -> grow */
+            if(msize < agent.size()) {
+//                cerr << "l from " << l << " to " << middle << " r= " << r << endl;
+                l = middle+1;
+            } else {
+//                cerr << "r from " << r << " to " << middle << " l= " << l  <<endl;
+                r = middle;
+            }
         }
-
-
-
-
+        cout << l << endl;
 
     }
 

@@ -205,6 +205,7 @@ int main()
 
             if(max_dist > a) a = max_dist;
 
+
             /* merge all into aaaaaaaaaaaaa??????????????? */
             while(it_a != my_jammer_distance_list.end() &&
                   ufb.find_set(v1->info()) != ufb.find_set(v2->info())) {
