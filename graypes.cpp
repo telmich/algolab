@@ -1,7 +1,7 @@
-#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 
-typedef CGAL::Exact_predicates_exact_constructions_kernel K;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
 typedef Triangulation::Finite_faces_iterator  Face_iterator;
 typedef Triangulation::Finite_edges_iterator  Edge_iterator;
