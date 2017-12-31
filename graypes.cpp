@@ -23,7 +23,7 @@ double ceil_to_double(const K::FT& x)
     double a = std::ceil(CGAL::to_double(x));
 
     while (a < x) a += 1;
-    while (a+1 > x) a -= 1;
+    while (a-1 >= x) a -= 1;
     return a;
 }
 
