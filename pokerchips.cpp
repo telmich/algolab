@@ -217,7 +217,7 @@ int solve_recursive3(int snum,
     /********* find previous maximum ******/
 
 
-    /*********
+    /********* STOPPED HERE ***********/
 
     int b = solve_recursive2(snum+1, idx, chips, dptable);
 
