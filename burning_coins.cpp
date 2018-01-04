@@ -1,58 +1,87 @@
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
-/*
-   - List of coins
-   - Can take from front or back
-   - Find our largest *guaranteed* amount (=> lower bound)
+int solve(bool my_turn, vector<int> &coin, int l, int r, vector<vector<int>> &dptable)
+{
+    bool next_turn = !my_turn;
 
-   - Input: 1000 coins
-   - Naive version: sounds exponential -> 2^10 -> works 2^100 -> fail
-     - Build every possible tree
-     - take left -> branch out for right and left of the choice of opponent
-     - continue until empty
-     - remember all lower (?) outcomes?
-     - take highest lowest outcome?
+    int res = 0;
 
-   - Remembering and not recalculating paths
-     - good enough?
+    cerr << "l=" << l << " r=" << r << endl;
 
-   - 1000^3 is too big -> general case
-    - O(n) ok
-    - O(n log n) ok
-    - O(n^2) ok
+    if(dptable[l][r] != -1) return dptable[l][r];
 
-   - Ideas:
-     - length based approach?
-       - n + n-1 + n-2 ... => O(n^2)
-       - runtime would be ok
-     - length1: we take the highest
-     - length2: we start: we can still take the highest and be done
-     - length3: things become more interesting
+    if(r-l == 0) {
+        if(my_turn) {
+            res = coin[l];
+        } else {
+            res = 0;
+        }
+    }
 
-   - different actions for who's turn it is?
-    - odd turn is always ours
-    - every time taking the best
-    - but only in odd case we add it to our sum
+    /* stop recursion */
+    if(r-l == 1) {
+        if(my_turn) {
+            res = max(coin[l], coin[r]);
+        } else {
+            res = min(coin[l], coin[r]);
+        }
+        cerr << "lr=1 " << res << " " << my_turn << endl;
+    } else {
+        int a = coin[l] + solve(next_turn, coin, l+1, r, dptable);
 
-*/
+        int b = coin[r] + solve(next_turn, coin, l, r-1, dptable);
+
+        if(my_turn) {
+            res = max(a, b);
+        } else {
+            if(a > b) {
+                res = b - coin[r];
+            } else {
+                res = a - coin[l];
+            }
+        }
+    }
+
+    dptable[l][r] = res;
+
+    return res;
+}
 
 int main()
 {
+
     ios_base::sync_with_stdio(false);
 
     int t;
     cin >> t;
 
+
     while(t--) {
         int n;
-        int coin[n];
         cin >> n;
+        vector<int> coin(n);
+
+        vector<vector<int>> dptable(n);
+        vector<vector<int>> dptable_he(n);
+
+        cerr << n << endl;
+
+        if(n == 1) {
+            cin >> n;
+            cout << n << endl;
+            continue;
+        }
 
         for(int i=0; i < n; i++) {
+            dptable[i] = vector<int>(n, -1);
+            dptable_he[i] = vector<int>(n, -1);
             cin >> coin[i];
         }
+
+        cout << solve(true, coin, 0, coin.size()-1, dptable) << endl;
 
     }
 }

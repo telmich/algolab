@@ -8,6 +8,8 @@ using namespace std;
 
 int foo;
 int foo2;
+int foo3;
+
 
 int remove_this_colour(int colour, vector<stack<int>> &chips) {
     int res = 0;
@@ -67,7 +69,6 @@ int solve_recursive(vector<stack<int>> chips) { /* copy, not reference!!! */
         res = max(res, tmpres);
 
     }
-
     return res;
 }
 
@@ -128,6 +129,7 @@ int solve_recursive2(int snum,
 
 
 
+
 int create_all_pairs(int idx,
                      vector<vector<int>> &chips_v)
 {
@@ -154,6 +156,80 @@ int create_all_pairs(int idx,
 
 }
 
+
+int solve_recursive3(int snum,
+                     vector<int> &idx,
+                     vector<vector<int>> &chips,
+                     vector<vector<int>> &dptable) {
+
+    int res = -1;
+    int next_table;
+
+    cerr << "foo3 " << foo3++ << " snum " << snum << " " << idx[snum] << endl;
+
+    if(snum >= idx.size() || idx[snum] >= chips[snum].size()) {
+        return 0; /* FIXME: return last entry */
+    }
+
+
+    /* lookup in dp table */
+    next_table = 0;
+    for(int i=0; i < idx.size(); i++) {
+        next_table = dptable[next_table][idx[snum]];
+
+        if(next_table == -1) {
+            break;
+        }
+    }
+
+    /* found entry in dptable, return */
+    if(next_table != -1) {
+        return next_table;
+    }
+
+    /********* find optimum here */
+    int colour = chips[snum][idx[snum]];
+
+    vector<int> newidx(idx.size());
+
+    int num_stones = 0;
+
+    for(int j=0; j < chips.size(); j++) {
+        if(idx[j] < 0) continue; /* stack empty */
+
+        int colour_here = chips[j][idx[j]];
+
+        if(colour_here == colour) {
+            num_stones++;
+            newidx[j] = idx[j]-1;
+        } else {
+            newidx[j] = idx[j]-1;
+        }
+    }
+
+    int tmpres = 0;
+    if(num_stones > 1) {
+        tmpres += exp2(num_stones-2);
+    }
+
+    int a = tmpres + solve_recursive2(snum, newidx, chips, dptable);
+
+    /********* find previous maximum ******/
+
+
+    /*********
+
+    int b = solve_recursive2(snum+1, idx, chips, dptable);
+
+    cerr << "snum " << snum << " " << idx[snum] << " a/b " << a << " " << b << endl;
+
+    dptable[snum][idx[snum]] = max(a, b);
+
+    return dptable[snum][idx[snum]];
+}
+
+
+
 int main()
 {
 
@@ -169,12 +245,14 @@ int main()
 
         vector<int> m(n);
         vector<int> idx(n);
+        vector<int> idx_0(n, 0);
+
         vector<vector<int>> dptable(n);
 
         for(int i=0; i<n; i++) {
             cin >> m[i];
             idx[i] = m[i] - 1;
-            dptable[i].resize(m[i], -1);
+//            dptable[i].resize(m[i], -1);
         }
 
         vector<stack<int>> chips(n);
@@ -192,11 +270,14 @@ int main()
 
         foo = 0;
         foo2 = 0;
+        foo3 = 0;
+
 //        cerr << "Pairs: " << create_all_pairs(0, chips_v) << endl;
-
 //        cout << solve_recursive(chips) << endl;
+//        cout << solve_recursive2(0, idx, chips_v, dptable) << endl;
 
-        cout << solve_recursive2(0, idx, chips_v, dptable) << endl;
+        dptable[0].resize(m[0], -1);
+        cout << solve_recursive3(0, idx_0, chips_v, dptable) << endl;
         cerr << "----" << endl;
     }
 
