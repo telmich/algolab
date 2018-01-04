@@ -1,66 +1,160 @@
-#include <iostream>
 #include <vector>
-#include <map>
-
-#include <boost/graph/directed_graph.hpp>
-
-typedef boost::directed_graph<> Graph;
-
+#include <iostream>
 
 using namespace std;
-using namespace boost;
 
-int solve_query(vector<int> &query,
-                vector<vector<vector<int>>> &ci,
-                vector<vector<int>> &bounds)
+
+// int get_result(vector<int> &query,
+//                vector<vector<int>> &record,
+//                vector<int> &result)
+// {
+//     int k = query.size();
+//     int res = -1;
+
+//     int nextpos = query[0];
+
+//     for(int i=1; i < k; i++) {
+//         int question = query[i];
+//         int records_here = record[i][nextpos].size();
+
+//         if(records_here == 0) { /* no results listed */
+//             nextpos = -1;
+//             break;
+//         }
+
+//         for(int j=0; j < records_here; j++) {
+//             if(record[i][question].first == next) {
+//                 nextpos = record[i][question].second;
+//                 break;
+//             }
+//         }
+//         if(nextpos == -1) break;
+
+//         if(i == k) {
+//             res = result[nextpos];
+//         }
+
+//     }
+
+//     return res;
+// }
+
+
+// int store_element(int &value,
+//                   vector<int> &query,
+//                   vector<vector<pair<int,int>>> &record,
+//                   vector<int> &result)
+// {
+//     int k = query.size();
+
+//     int pos;
+//     int val = value;
+
+//     cerr << "Insert: ";
+
+//     result.push_back(value);
+//     pos = result.size()-1;
+
+//     cerr << " p/v: " << pos << " " << val;
+
+//     for(int i=k-1; i >=0; i--) {
+//         int val = query[i];
+//         cerr << " p/v: " << pos << " " << val;
+
+//         pair<int, int> foo = make_pair(val, pos);
+//         record[i].push_back(foo);
+//         pos = record[i].size()-1;
+//     }
+//     cerr << endl;
+// }
+
+
+// int get_element(vector<vector<int>>> records,
+//                 vector<int> query)
+// {
+//     vector<int> results;
+
+//     array1[3].push_back();
+
+//     /* start reverse, insert result at the end */
+
+//     array[k-1]
+
+
+//     results.push_back(res);
+//     entrynum = result.size()-1;
+
+
+// }
+
+
+
+void store_element(int &value,
+                   vector<int> &pos,
+                   vector<vector<int>> &table,
+                   vector<int> &ai,
+                   vector<int> &ci)
+
 {
 
-    int k = query.size();
-    int res = -1;
+    int t_index = 0;
+    int t_pos   = pos[0] - ai[0];
 
-    int cur, next;
+    for(int i=0; i < pos.size()-1; i++) {
+        int next_table;
 
-    for(int i=0; i < k-1; i++) {
-        cur = query[i];
-        next = query[i+1];
+        if(table[t_index][t_pos] == -1) { /* create new vector */
+            table.resize(table.size() +1);
+            next_table = table.size() -1;
 
-        if(ci[i][cur-bounds[0][i]].size() > 0) {
-            cerr << "we can continue\n";
+            table[next_table] = vector<int>(ci[i+1], -1);
 
-            for(auto ai = ci[i][cur-bounds[0][i]].begin(); ai != ci[i][cur-bounds[0][i]].end(); ai++) {
+            table[t_index][t_pos] = next_table;
 
-            }
+            cerr << "Generating next table for " << i << "," << t_pos << ": " << next_table << " size: " << ci[i+1] << endl;
 
+        } else {
+            next_table = table[t_index][t_pos];
         }
+        cerr << "Using table for " << i << "," << t_pos << ": " << next_table << endl;
 
+        t_index = next_table;
+        t_pos   = pos[i+1] - ai[i+1];
     }
 
-//     auto search = ci[0].find(query[0]);
-//     if(search == ci[0].end()) return res;
+    cerr << "Storing " << value << " at " << t_index << "," << t_pos << endl;
 
-//     /* now we got a vector of ints */
+    table[t_index][t_pos] = value;
 
-    return res;
 }
 
-void insert_result(vector<int> &resulttree,
-                   vector<vector<vector<int>>> &ci,
-                   vector<vector<int>> &bounds)
+int get_element(vector<int> &pos,
+                vector<vector<int>> &table,
+                vector<int> &ai)
+
 {
-    int k = resulttree.size()-1; /* result is also in there */
 
-    int cur, next;
+    int res = -1;
 
-    cur = resulttree[0];
+    int t_index = 0;
+    int t_pos   = pos[0] - ai[0];
+    int next_table;
 
-    for(int i=0; i < (k-1); i++) {
-        next = resulttree[i+1];
 
-        int idx = cur-bounds[0][i];
-        cerr << "ci[" << i << "][" <<  idx << "] +=" << next << endl;
 
-        ci[i][idx].push_back(next);
+    for(int i=0; i < pos.size(); i++) {
+        next_table = table[t_index][t_pos];
+
+        if(next_table == -1) break;
+
+        t_index = next_table;
+        t_pos   = pos[i+1] - ai[i+1];
     }
+
+    return next_table;
+
+
+
 }
 
 
@@ -70,52 +164,63 @@ int main()
 
     int t;
     cin >> t;
+
     while(t--) {
         int k, n, q;
         cin >> k >> n >> q;
-        cerr << "knq=" << k << " " << n << " " << q << endl;
 
-        vector<vector<int>> bounds(2, vector<int>(k) );
+        vector<int> ai(k);
+        vector<int> bi(k);
+        vector<int> ci(k);
 
-        vector<vector<vector<int>>> ci(k);
+        vector<vector<pair<int, int>>> records(k);
+        vector<int> result;
+
+
+
 
         for(int i=0; i < k; i++) {
-            cin >> bounds[0][i] >> bounds[1][i];
-            int vector_size = bounds[1][i] - bounds[0][i] + 1;
-
-            ci[i].resize(vector_size);
-
-            cerr << "l/u[" << i << "] = " << bounds[0][i] << " " << bounds[1][i] << " == " << vector_size << " " << ci[i].size() << "\n";
-
+            cin >> ai[i] >> bi[i];
+            ci[i] = bi[i] - ai[i] + 1;
+            records[i].resize(ci[i]);
         }
 
-        /* experiments / measurements */
+        vector<vector<int>> table(1);
+        table[0].resize(ci[0], -1);
+
         for(int i=0; i < n; i++) {
-            vector<int> tmpstuff(k+1);
+            vector<int> pos(k);
+            int res;
 
-            int tmp, tmp2;
-
-            for(int j=0; j < k+1; j++) {
-                cin >> tmpstuff[j];
-            }
-
-            cerr << "inserting for " << i << endl;
-            insert_result(tmpstuff, ci, bounds);
-
-        }
-        cerr << "post\n";
-
-        /* queries */
-        for(int i=0; i < q; i++) {
-            vector<int> query(k);
-            int tmp;
             for(int j=0; j < k; j++) {
-                cin >> tmp;
-                query[j] = tmp;
+                cin >> pos[j];
+
             }
-            cout << solve_query(query, ci, bounds);
+            cin >> res;
+
+            store_element(res, pos, table, ai, ci);
         }
+
+        for(int i=0; i < q; i++) {
+            vector<int> pos(k);
+            int res;
+
+            cerr << "Looking for " ;
+
+            for(int j=0; j < k; j++) {
+
+                cin >> pos[j];
+                cerr << pos[j] << " ";
+            }
+
+
+            cerr << endl;
+            cout << get_element(pos, table, ai) << endl;
+        }
+        cerr << "----" << endl;
+
 
     }
+
 
 }
