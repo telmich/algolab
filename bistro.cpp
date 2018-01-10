@@ -1,56 +1,54 @@
 #include <iostream>
+#include <vector>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 
-#include <CGAL/nearest_neighbor_delaunay_2.h>
-
-
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Delaunay_triangulation_2<K> Triangulation;
-// typedef Triangulation::Finite_faces_iterator Face_iterator;
-typedef Triangulation::Vertex_handle Vertex;
-typedef Triangulation::Edge_circulator EC;
+typedef CGAL::Delaunay_triangulation_2<K>                   Triangulation;
+typedef Triangulation::Finite_faces_iterator                Face_iterator;
+typedef Triangulation::Vertex_handle                        Vertex;
 
 using namespace std;
-using namespace CGAL;
 
 int main()
 {
     ios_base::sync_with_stdio(false);
+
+
+    std::size_t n;
+    std::cin >> n;
+
+
     cout << setprecision(15);
 
-    while(1) {
-        int n;
-        cin >> n;
-        if(!n) break;
+  while(n) {
+      vector<K::Point_2> pts(n);
 
-        /******************** read data ********************/
-        vector<K::Point_2> pts(n);
+      for (std::size_t i = 0; i < n; ++i) {
+          std::cin >> pts[i];
+      }
 
-        pts.reserve(n);
-        for (int i = 0; i < n; ++i) {
-            K::Point_2 p;
-            std::cin >> p;
-            pts[i] = p;
-        }
+      int m;
+      cin >> m;
 
-        /******************** create triangulation ********************/
-        Triangulation t;
-        t.insert(pts.begin(), pts.end());
+      vector<K::Point_2> rest_new(m);
+      for (std::size_t i = 0; i < m; ++i) {
+          std::cin >> rest_new[i];
+      }
 
-        /******************** get distances ********************/
-        int m;
-        cin >> m;
-        for(int i=0; i <m; ++i) {
-            int x, y;
-            cin >> x >> y;
+      // construct triangulation
+      Triangulation t;
+      t.insert(pts.begin(), pts.end());
 
-            K::Point_2 p1(x,y), p2;
+      for (std::size_t i = 0; i < rest_new.size(); ++i) {
+          Vertex v = t.nearest_vertex(rest_new[i]);
+//          cerr << "fck "  << v->point() << endl;
 
-            p2 = (t.nearest_vertex(p1))->point();
+          cout << CGAL::squared_distance(rest_new[i], v->point()) << endl;
 
-            cout << to_double(squared_distance(p1, p2)) << endl;
-        }
-    }
+      }
+
+      cin >> n;
+  }
 }

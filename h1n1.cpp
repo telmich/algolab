@@ -1,140 +1,81 @@
-#include <iostream>
-
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/Triangulation_face_base_with_info_2.h>
+
+#include <iostream>
+#include <map>
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
+typedef Triangulation::Edge_iterator       Edge_iterator;
+typedef Triangulation::Edge                Edge;
+typedef Triangulation::Face_handle         Face;
 
 using namespace std;
 
-enum FaceState { To_Discover = 0, Visited = 1, Unusable = 2 };
-
-typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Triangulation_vertex_base_2<K> Vb;
-
-typedef CGAL::Triangulation_face_base_with_info_2<FaceState,K> Fb;
-
-typedef CGAL::Triangulation_data_structure_2<Vb,Fb> Tds;
-typedef CGAL::Delaunay_triangulation_2<K,Tds> Triangulation;
-
-typedef K::Point_2 Point;
-typedef Triangulation::All_faces_iterator AFI;
-typedef Triangulation::Face_handle FaceHandle;
-typedef Triangulation::Vertex_handle Vertex;
-typedef Triangulation::Edge_circulator EdgeCirculator;
-
-
-
-
-bool find_path(Triangulation &t, const Point &p, const double &d, FaceHandle &face)
-{
-    /* nothing to explore? abort here! */
-    if(face->info() != To_Discover) return false;
-
-    face->info() = Visited; /* working on it -- nobody else needs to go in here */
-
-    /* Outside! Success! */
-    if(t.is_infinite(face)) return true;
-
-    /* any vertex will do - take nearest for easy access */
-    Vertex v = t.nearest_vertex(p, face);
-    Point center = t.circumcenter(face);
-
-    /* cannot travel through this face */
-    if(squared_distance(v->point(), center) < d) {
-        face->info() = Unusable;
-        cerr << "NOT good here\n";
-    }
-
-    /* test every edge, if we can escape */
-    EdgeCirculator ec = t.incident_edges(v, face);
-    do {
-        /* get face on other side if we can pass */
-        ec->squared_length();
-
-    } while(++ec != t.incident_edges(v, face));
-
-
-
-    /******************** find a path outside ********************/
-    /* iterate over all faces, check the situation, move on */
-//    for(all neighbour faces) {
-
-}
-
-
-vector<bool> solve(vector<Point> &infected_pos, vector<Point> &people_pos, vector<double> &n_distance)
-{
-    vector<bool> solution(people_pos.size());
-
-    /******************** build triangulation ********************/
-    Triangulation t;
-    t.insert(infected_pos.begin(), infected_pos.end());
-
-    /******************** Check for a valid path ********************/
-    for(int i=0; i < people_pos.size(); ++i) {
-
-        /* Mark all faces as unvisited */
-        for(AFI it= t.all_faces_begin(); it != t.all_faces_end(); ++it) {
-            it->info() = To_Discover;
-
-            if(t.is_infinite(it)) {
-                cerr << "inf.....\n";
-            } else {
-                cerr << "other face\n";
-            }
-        }
-        /* Starting face */
-        FaceHandle face = t.locate(people_pos[i]);
-
-        solution[i] = find_path(t, people_pos[i], n_distance[i], face);
-    }
-
-    return solution;
-}
-
 int main()
 {
-    ios_base::sync_with_stdio(false);
-
     int n;
     cin >> n;
 
     while(n) {
+        std::vector<K::Point_2> pts(n);
+        cerr << "reading " << n << " points\n";
 
-        vector<Point> infected_pos(n);
-        for(int i=0; i <n; ++i) {
-            int x, y;
-            cin >> x >> y;
-
-            infected_pos[i] = Point(x,y);
+        for (int i = 0; i < n; ++i) {
+            cin >> pts[i];
+            cerr << pts[i] << endl;
         }
 
-        int m; cin >> m;
-        vector<Point> people_pos(m);
-        vector<double> n_distance(m);
 
-        for(int i=0; i <m; ++i) {
-            int x, y;
-            double d;
-            cin >> x >> y >> d;
+        Triangulation t;
+        t.insert(pts.begin(), pts.end());
 
-            people_pos[i] = Point(x, y);
-            n_distance[i] = d;
-        }
+        int m;
+        cin >> m;
 
-        vector<bool> results = solve(infected_pos, people_pos, n_distance);
+        cerr << m << " inside\n";
 
-        for(int i=0; i < results.size(); ++i) {
-            if (results[i]) {
-                cout << "y";
+        for (int i = 0; i < m; ++i) {
+            K::Point_2 p;
+            Face f;
+            int d;
 
+            cin >> p;
+            cin >> d;
+            f = t.locate(p);
+
+            if(t.is_infinite(f)) {
+                cout << "y\n";
+                continue;
             } else {
-                cout << "n";
+                /* iterate over all edges
+                 * if the squared edge length >= d -> add both faces to new
+                 * graph as vertices */
+
+                /* create bgl graph */
+
+                for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
+                    K::Point_2 p1, p2;
+                    p1 = e->first->vertex((e->second +1) % 3)->point();
+                    p2 = e->first->vertex((e->second +2) % 3)->point();
+
+                    if(CGAL::squared_distance(p1, p2) >= d) {
+                        Edge e2 = t.mirror_edge(*e);
+                        Face f1, f2;
+                        f1 = e->first;
+                        f2 = e2.first;
+                    }
+
+                    std::cout << t.segment(e) << "\n";
+                }
+
+                cout << "needs work\n";
             }
-            cout << "\n";
         }
 
         cin >> n;
-    }
 
+
+
+    }
 }
