@@ -4,13 +4,46 @@
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
 typedef Triangulation::Edge_iterator  Edge_iterator;
+typedef Triangulation::Vertex_handle Vertex;
 typedef K::Point_2 Point;
 
 #include <vector>
+#include <map>
 using namespace std;
+
+#include <CGAL/basic.h>
+#include <CGAL/QP_models.h>
+#include <CGAL/QP_functions.h>
+#include <CGAL/Gmpz.h>
+
+#include <CGAL/Gmpq.h>
+typedef CGAL::Gmpq ET;
+// solution type the solver provides
+typedef CGAL::Quotient<ET> SolT;
+// program and solution types
+typedef CGAL::Quadratic_program<ET> Program;
+typedef CGAL::Quadratic_program_solution<ET> Solution;
+
+double ceil_to_double(const SolT& x)
+{
+  double a = std::ceil(CGAL::to_double(x));
+  while (a < x) a += 1;
+  while (a-1 >= x) a -= 1;
+  return a;
+}
+
+double floor_to_double(const SolT& x)
+{
+  double a = std::floor(CGAL::to_double(x));
+  while (a > x) a -= 1;
+  while (a+1 <= x) a += 1;
+  return a;
+}
 
 int main()
 {
+
+    ios_base::sync_with_stdio(false);
 
     int t;
     cin >> t;
@@ -27,14 +60,18 @@ int main()
         vector<int> vi(g);
         vector<int> wi(g);
 
-        vector<Point> agent(g);
-        vector<int> zi(g);
+        vector<Point> agent(a);
+        vector<int> zi(a);
+
+        map<Point, int> gang2id;
 
         for(int i=0; i < g; i++) {
             cin >> gang[i];
             cin >> ui[i];
             cin >> vi[i];
             cin >> wi[i];
+
+            gang2id[gang[i]] = i; /* lookup id from point */
         }
 
         for(int i=0; i < a; i++) {
@@ -42,6 +79,70 @@ int main()
             cin >> zi[i];
         }
 
+        Triangulation t;
+        t.insert(gang.begin(), gang.end());
+
+        vector<int> agent2gang(a, -1);
+
+        vector<int> observed_gang(g, -1);
+
+        for(int i=0; i < a; i++) {
+            Vertex v;
+            v = t.nearest_vertex(agent[i]);
+            int id = gang2id[v->point()];
+
+            agent2gang[i] = id;
+
+            if(observed_gang[id] == -1) {
+                observed_gang[id] = i;
+            } else {
+                int other_agent = observed_gang[id];
+
+                /* update if other agent costs more than us */
+                if(zi[other_agent] > zi[i]) {
+                    observed_gang[id] = i;
+                }
+            }
+        }
+
+        Program lp (CGAL::LARGER, true, 0, true, 24);
+
+        int index = 0;
+
+        lp.set_b(0, u);
+        lp.set_b(1, v);
+        lp.set_b(2, w);
+
+        for(int i=0; i < a; i++) {
+            lp.set_c(i, zi[i]); /* minimise the hourly rates */
+        }
+
+        for(int i=0; i < g; i++) {
+            if(observed_gang[i] != -1) {
+                int agent = observed_gang[i];
+                int g_member = i;
+
+                lp.set_a(agent, 0, ui[g_member]);
+                lp.set_a(agent, 1, vi[g_member]);
+                lp.set_a(agent, 2, wi[g_member]);
+            }
+
+        }
+
+        Solution s = CGAL::solve_linear_program(lp, ET());
+        bool not_solved = s.status() == CGAL::QP_INFEASIBLE;
+
+        double value = floor_to_double(s.objective_value());
+
+        ET z_as_et = z;
+
+        // cerr << "s/val/z " << s.objective_value() << " " << value << " " << z << endl;
+
+        if(s.is_optimal() && s.objective_value() <= z_as_et) {
+            cout << "L" << endl;
+        } else {
+            cout << "H" << endl;
+        }
     }
 
     // std::vector<K::Point_2> pts;
@@ -52,8 +153,7 @@ int main()
     //     pts.push_back(p);
     // }
     // // construct triangulation
-    // Triangulation t;
-    // t.insert(pts.begin(), pts.end());
+
     // // output all edges
     // for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e)
     //     std::cout << t.segment(e) << "\n";
