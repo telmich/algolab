@@ -82,9 +82,13 @@ int main()
         Triangulation t;
         t.insert(gang.begin(), gang.end());
 
+        // cerr << "a" << endl;
+
         vector<int> agent2gang(a, -1);
 
         vector<int> observed_gang(g, -1);
+
+        vector<bool> agent_used(a, false);
 
         for(int i=0; i < a; i++) {
             Vertex v;
@@ -95,15 +99,22 @@ int main()
 
             if(observed_gang[id] == -1) {
                 observed_gang[id] = i;
+                agent_used[i] = true;
             } else {
                 int other_agent = observed_gang[id];
 
                 /* update if other agent costs more than us */
                 if(zi[other_agent] > zi[i]) {
                     observed_gang[id] = i;
+
+                    agent_used[i] = true;
+                    agent_used[other_agent] = false;
+
                 }
             }
         }
+        // cerr << "b" << endl;
+
 
         Program lp (CGAL::LARGER, true, 0, true, 24);
 
@@ -113,9 +124,17 @@ int main()
         lp.set_b(1, v);
         lp.set_b(2, w);
 
+        int dbgcnt = 0;
+
         for(int i=0; i < a; i++) {
-            lp.set_c(i, zi[i]); /* minimise the hourly rates */
+            if(agent_used[i]) {
+                lp.set_c(i, zi[i]); /* minimise the hourly rates */
+                ++dbgcnt;
+            }
         }
+        // cerr << "agents/used = " << a << " " << dbgcnt << endl;
+
+        dbgcnt = 0;
 
         for(int i=0; i < g; i++) {
             if(observed_gang[i] != -1) {
@@ -125,18 +144,23 @@ int main()
                 lp.set_a(agent, 0, ui[g_member]);
                 lp.set_a(agent, 1, vi[g_member]);
                 lp.set_a(agent, 2, wi[g_member]);
+                dbgcnt++;
             }
 
+
         }
+        // cerr << "dbgcnt = " << dbgcnt << endl;
 
         Solution s = CGAL::solve_linear_program(lp, ET());
-        bool not_solved = s.status() == CGAL::QP_INFEASIBLE;
 
-        double value = floor_to_double(s.objective_value());
+        // // cerr << "c" << endl;
+
+//        bool not_solved = s.status() == CGAL::QP_INFEASIBLE;
+//        double value = floor_to_double(s.objective_value());
 
         ET z_as_et = z;
 
-        // cerr << "s/val/z " << s.objective_value() << " " << value << " " << z << endl;
+        // // // cerr << "s/val/z " << s.objective_value() << " " << value << " " << z << endl;
 
         if(s.is_optimal() && s.objective_value() <= z_as_et) {
             cout << "L" << endl;
@@ -145,16 +169,4 @@ int main()
         }
     }
 
-    // std::vector<K::Point_2> pts;
-    // pts.reserve(n);
-    // for (std::size_t i = 0; i < n; ++i) {
-    //     K::Point_2 p;
-    //     std::cin >> p;
-    //     pts.push_back(p);
-    // }
-    // // construct triangulation
-
-    // // output all edges
-    // for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e)
-    //     std::cout << t.segment(e) << "\n";
 }
