@@ -92,9 +92,9 @@ void testcases() {
         photo[tmp]++;
     }
 
-    int num_vertices = n + k + l + 2; /* original + photos + stations + start&end */
-    int s_vertex = n;
-    int t_vertex = n+1;
+    int num_vertices = 2*n + 2; /* network x2 + t + s */
+    int s_vertex = 2*n;
+    int t_vertex = 2*n+1;
 
 
 	Graph G(num_vertices);
@@ -103,21 +103,27 @@ void testcases() {
 	ResidualCapacityMap rescapacitymap = boost::get(boost::edge_residual_capacity, G);
 	EdgeAdder eaG(G, capacitymap, revedgemap);
 
-
-    for(int i=0; i< m; i++) {
+    for(int i=0; i < m; i++) {
         int a, b;
+
         cin >> a >> b;
 
-        eaG.addEdge(a, b, 1); // from, to, capacity
+        eaG.addEdge(a, b, k); // anyone can use the streets a lot in first network, until got a photograph
+        eaG.addEdge(a+n, b+n, 1); // 2nd network, after picking up
+
+
     }
 
 
     for(int i=0; i< n; i++) {
         if(station[i] > 0) {
-            eaG.addEdge(i, t_vertex, station[i]); // from, to, capacity
+            eaG.addEdge(s_vertex, i, station[i]);   // incoming flow
+            eaG.addEdge(i+n, t_vertex, station[i]); // 2nd network
         }
+
+        /* linking second network */
         if(photo[i] > 0) {
-            eaG.addEdge(s_vertex, i, photo[i]); // from, to, capacity
+            eaG.addEdge(i, i+n, photo[i]); // links networks, if it is a photo
         }
     }
 
