@@ -1,162 +1,112 @@
+//=======================================================================
+// Copyright 2001 Jeremy G. Siek, Andrew Lumsdaine, Lie-Quan Lee,
+//
+// Distributed under the Boost Software License, Version 1.0. (See
+// accompanying file LICENSE_1_0.txt or copy at
+// http://www.boost.org/LICENSE_1_0.txt)
+//=======================================================================
+#include <boost/config.hpp>
 #include <iostream>
-#include <queue>
+#include <fstream>
+#include <vector>
+#include <map>
 
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/property_map/property_map.hpp>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
-
 #include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
-#include <boost/pending/disjoint_sets.hpp>
-
-typedef CGAL::Exact_predicates_exact_constructions_kernel K;
-
-typedef CGAL::Triangulation_face_base_2<K> Fb;
-typedef CGAL::Triangulation_vertex_base_with_info_2<int, K> Vb;
-
-typedef CGAL::Triangulation_data_structure_2<Vb,Fb> Tds;
-typedef CGAL::Delaunay_triangulation_2<K,Tds> Triangulation;
-
-typedef Triangulation::Finite_faces_iterator  Face_iterator;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
 typedef Triangulation::Edge_iterator  Edge_iterator;
-typedef K::FT FT;
+typedef Triangulation::Vertex_handle Vertex;
+typedef K::Point_2 Point;
 
-typedef Triangulation::Point Point;
 
+
+
+using namespace boost;
 using namespace std;
 
-int main()
-{
-    ios_base::sync_with_stdio(false);
 
-    int t; cin >> t;
+int
+main()
+{
+    typedef adjacency_list < listS, vecS, undirectedS,
+                             no_property, property < edge_weight_t, int > > graph_t;
+    typedef graph_traits < graph_t >::vertex_descriptor vertex_descriptor;
+    typedef graph_traits<graph_t>::edge_descriptor		EdgeB;	// Edge type
+    typedef std::pair<int, int> Edge;
+
+    int t;
+
+    cin >> t;
 
     while(t--) {
         int n, r;
         cin >> n >> r;
 
-        cerr << "nr : " << n << " " << r << endl;
-        vector<pair<Point, int> > position(n);
+        double mydist_squared = r*r;
 
-        for(int i=0; i < n; ++i) {
-            Point p;
-            cin >> p;
-            position[i] = make_pair(p, i);
+        std::vector<K::Point_2> pts(n);
+        map<K::Point_2, int> point_to_index;
+
+        for (std::size_t i = 0; i < n; ++i) {
+            std::cin >> pts[i];
+            point_to_index[pts[i]] = i;
         }
 
-        /* not moving? give up! */
-        if(r == 0) {
-            cout << "0\n";
-            continue;
-        }
+        Triangulation t;
+        t.insert(pts.begin(), pts.end());
 
-        /* not enough planets to capture anything */
-        if(n < 4) {
-            cout << "0\n";
-            continue;
-        }
+        graph_t g(n);
+        property_map<graph_t, edge_weight_t>::type weightmap = get(edge_weight, g);
 
-        Triangulation trg;
+        std::vector<vertex_descriptor> p(num_vertices(g));
+        std::vector<int> d(num_vertices(g));
+        vertex_descriptor s = vertex(0, g);
 
-        trg.insert(position.begin(), position.end());
+        for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
+            Point v1 = e->first->vertex((e->second + 1) % 3)->point();
+            Point v2 = e->first->vertex((e->second + 2) % 3)->point();
+            double rr = CGAL::squared_distance(v1, v2);
 
-        /* get all possible connections */
-        FT squared_radius = r*r;
+            if(rr <= mydist_squared) {
+                int id1 = point_to_index[v1];
+                int id2 = point_to_index[v2];
 
-        /* set of planets */
-        boost::disjoint_sets_with_storage<> uf(n);
+                EdgeB e;	bool success;
+                tie(e, success) = add_edge(id1, id2, g);
 
-        vector<vector<int > > connection(n);
-
-        int highest_planet = 0;
-
-        for (Edge_iterator e = trg.finite_edges_begin(); e != trg.finite_edges_end(); ++e) {
-            int p1 = (e->first->vertex((e->second+1)%3)->info());
-            int p2 = (e->first->vertex((e->second+2)%3)->info());
-
-            cerr << "Testing edge: " << trg.segment(e) << ": " << p1 << " " << p2 << endl;
-
-            FT e_dist = trg.segment(e).squared_length();
-            if(squared_radius >= e_dist) {
-
-                /* find starting planet */
-                highest_planet = max(highest_planet, p1);
-                highest_planet = max(highest_planet, p2);
-
-                cerr << "Adding edge: " << trg.segment(e) << ": " << p1 << " " << p2 << endl;
-
-                uf.union_set(p1, p2);
-
-                connection[p1].push_back(p2);
-                connection[p2].push_back(p1);
-            }
-            // else {
-            //     cerr << "Unreachable with " << r << " <-> " << trg.segment(e).squared_length() << " : " << trg.segment(e) << endl;
-            // }
-        }
-
-        priority_queue<int> planet_to_visit;
-
-        vector<bool> visited(n);
-        vector<int> max_len(n);
-
-        set<int> high_set;
-
-        for(int i=(n-1); i >= 0; --i) {
-            int uset = uf.find_set(i);
-
-            /* set has not been registered */
-            if(high_set.find(uset) == high_set.end()) {
-                high_set.insert(uset);
-
-                planet_to_visit.push(i);
-                max_len[i] = 1;
-                cerr << "pushing " << i << endl;
+                weightmap[e] = 1;
             }
         }
 
-        int k = 1; /* the key for output -- at least one, as n >= 4! */
+        const int num_nodes = n;
 
-        /* add highest of each connected components */
+        int l = n/2;
+        int r = n-1;
+        int cur = (l+r)/2;
 
-        while(!planet_to_visit.empty()) {
-            int p = planet_to_visit.top();
-            planet_to_visit.pop();
+        while(l != r) {
+            dijkstra_shortest_paths(g, cur,
+                                    predecessor_map(boost::make_iterator_property_map(p.begin(), get(boost::vertex_index, g))).
+                                    distance_map(boost::make_iterator_property_map(d.begin(), get(boost::vertex_index, g))));
 
-            visited[p] = true;
+            if(d[n-1]
 
-            /* found longest chain already -- abort */
-            // if(k >= p) {
-            //     cerr << "Found max for this point\n";
-            //     break;
-            // }
+        // std::cout << "distances and parents:" << std::endl;
+        // graph_traits < graph_t >::vertex_iterator vi, vend;
+        // for (boost::tie(vi, vend) = vertices(g); vi != vend; ++vi) {
+        //     std::cout << "distance(" << name[*vi] << ") = " << d[*vi] << ", ";
+        //     std::cout << "parent(" << name[*vi] << ") = " << name[p[*vi]] << std::
+        //         endl;
+        // }
+        // std::cout << std::endl;
 
-            /* visit all connected planets */
-            for(auto it=connection[p].begin(); it != connection[p].end(); ++it) {
-                /* do not revisit */
-                if(visited[*it]) continue;
-
-                int new_len = max_len[p] + 1;
-
-                cerr << "Trying " << p << " -> " << *it << " with " << new_len << " max len " << (*it) << " total: " << k << endl;
-                /* can we extend chain to this planet? need to be short enough otherwise captured by empire */
-                if(new_len <= *it) {
-                    max_len[*it] = new_len;
-                    k = max(k, new_len);
-
-                }
-                planet_to_visit.push(*it);
-            }
-
-            /* longest possible chain */
-            if( k >= (n/2)) {
-                cerr << "Found max!\n";
-                break;
-            }
-
-        }
-        cout << k << endl;
     }
 
 }

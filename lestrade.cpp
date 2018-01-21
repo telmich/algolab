@@ -17,7 +17,9 @@ using namespace std;
 #include <CGAL/Gmpz.h>
 
 #include <CGAL/Gmpq.h>
-typedef CGAL::Gmpq ET;
+//typedef CGAL::Gmpq ET;
+typedef CGAL::Gmpz ET;
+
 // solution type the solver provides
 typedef CGAL::Quotient<ET> SolT;
 // program and solution types
