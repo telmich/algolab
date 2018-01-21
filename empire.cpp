@@ -4,6 +4,21 @@
 #include <vector>
 #include <map>
 
+#include <iostream>
+#include <cassert>
+#include <CGAL/basic.h>
+#include <CGAL/QP_models.h>
+#include <CGAL/QP_functions.h>
+#include <CGAL/Gmpz.h>
+
+// choose exact integral type
+typedef CGAL::Gmpz ET;
+
+// program and solution types
+typedef CGAL::Quadratic_program<int> Program;
+typedef CGAL::Quadratic_program_solution<ET> Solution;
+
+
 using namespace std;
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -22,6 +37,7 @@ int main()
 
     while(t--) {
         int a, s, b, e;
+
         cin >> a >> s >> b >> e;
 
         vector<Point> asteroid(a);
@@ -54,15 +70,13 @@ int main()
             Triangulation t_hunt;
             t_hunt.insert(hunter.begin(), hunter.end());
 
-            cerr << "a\n";
-
             for(int i=0; i < s; i++) {
                 Vertex v = t_hunt.nearest_vertex(shot[i]);
                 Point  p = v->point();
 
                 max_radius[i] = CGAL::squared_distance(p, shot[i]);
+                cerr << "max_" << i << "=" << max_radius[i] << endl;
             }
-            cerr << "b\n";
         }
 
         Triangulation t_shot;
@@ -71,27 +85,76 @@ int main()
         vector<double> shot_asteroid_dist(a);
         vector<double> asteroid_energy(a, 0);
 
-        for(int i=0; i < a; i++) {
-            for(j=0; j < s; j++) {
-            // Vertex v = t_shot.nearest_vertex(asteroid[i]);
-            // Point  p = v->point();
+        // string res = "y\n";
 
-            double dtmp = CGAL::squared_distance(shot[j], asteroid[i]);
+        // for(int i=0; i < a; i++) {
+        //     for(int j=0; j < s; j++) {
+        //         double dtmp = CGAL::squared_distance(shot[j], asteroid[i]);
 
-            bool reachable = shot_asteroid_dist[i] <= max_radius[shot_idx];
+        //         cerr << "distance = " << dtmp << endl;
 
-            if(!dist_limit || (dist_limit && reachable)) {
-                asteroid_energy[
-            }
+        //         bool reachable = dtmp <= max_radius[j];
+
+        //         if(!dist_limit || (dist_limit && reachable)) {
+        //             double demoninator = max(1.0, dtmp);
+
+        //             double added_e =  e / demoninator;
+
+        //             cerr << demoninator << " " << dtmp << " energy = " << added_e <<  endl;
+
+        //             asteroid_energy[i] += added_e;
+        //         }
+        //     }
+
+        //     cerr << asteroid_energy[i] << " " << density[i] << endl;
+        //     if(asteroid_energy[i] < density[i]) {
+        //         res = "n\n";
+        //         break;
+        //     }
+        // }
+
+        Program lp (CGAL::SMALLER, true, 0, true, e);
+        lp.set_c(0, 1);
+
+        int lp_idx = 0;
+
+        /* ok */
+        for(int i=0; i < s; i++) {
+            lp.set_a(i, lp_idx, 1);
         }
-        cerr << "c\n";
+        lp.set_b(lp_idx, e);
+        lp_idx++;
 
+        for(int i=0; i < a; i++) {
 
+            lp.set_r(lp_idx, CGAL::LARGER);
+            lp.set_b(lp_idx, density[i]);
 
+            for(int j=0; j < s; j++) {
+                double dtmp = CGAL::squared_distance(shot[j], asteroid[i]);
+                bool reachable = dtmp <= max_radius[j];
+
+//                cerr << "distance = " << dtmp << endl;
+
+                if(!dist_limit || (dist_limit && reachable)) {
+                    double demoninator = max(1.0, dtmp);
+                    double added_e =  1 / demoninator;
+
+                    lp.set_a(j, lp_idx, added_e);
+
+                    cerr << demoninator << " " << dtmp << " energy = " << added_e <<  endl;
+
+                }
+            }
+            lp_idx++;
+        }
+
+        Solution s1 = CGAL::solve_linear_program(lp, ET());
+        if(!s1.is_infeasible()) {
+            cout << "y\n";
+        } else {
+            cout << "n\n";
+        }
 
     }
-
-        // // output all edges
-        // for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e)
-        //     std::cout << t.segment(e) << "\n";
 }
