@@ -12,7 +12,8 @@
 #include <CGAL/Gmpz.h>
 
 // choose exact integral type
-typedef CGAL::Gmpz ET;
+//typedef CGAL::Gmpz ET;
+typedef CGAL::Gmpq ET;
 
 // program and solution types
 typedef CGAL::Quadratic_program<int> Program;
@@ -62,7 +63,7 @@ int main()
         }
 
         bool dist_limit = true;
-        vector<double> max_radius(s);
+        vector<ET> max_radius(s);
 
         if(b == 0) {
             dist_limit = false;
@@ -85,36 +86,7 @@ int main()
         vector<double> shot_asteroid_dist(a);
         vector<double> asteroid_energy(a, 0);
 
-        // string res = "y\n";
-
-        // for(int i=0; i < a; i++) {
-        //     for(int j=0; j < s; j++) {
-        //         double dtmp = CGAL::squared_distance(shot[j], asteroid[i]);
-
-        //         cerr << "distance = " << dtmp << endl;
-
-        //         bool reachable = dtmp <= max_radius[j];
-
-        //         if(!dist_limit || (dist_limit && reachable)) {
-        //             double demoninator = max(1.0, dtmp);
-
-        //             double added_e =  e / demoninator;
-
-        //             cerr << demoninator << " " << dtmp << " energy = " << added_e <<  endl;
-
-        //             asteroid_energy[i] += added_e;
-        //         }
-        //     }
-
-        //     cerr << asteroid_energy[i] << " " << density[i] << endl;
-        //     if(asteroid_energy[i] < density[i]) {
-        //         res = "n\n";
-        //         break;
-        //     }
-        // }
-
         Program lp (CGAL::SMALLER, true, 0, true, e);
-        lp.set_c(0, 1);
 
         int lp_idx = 0;
 
@@ -126,19 +98,17 @@ int main()
         lp_idx++;
 
         for(int i=0; i < a; i++) {
-
-            lp.set_r(lp_idx, CGAL::LARGER);
-            lp.set_b(lp_idx, density[i]);
+            bool has_energy = false;
 
             for(int j=0; j < s; j++) {
-                double dtmp = CGAL::squared_distance(shot[j], asteroid[i]);
+                ET dtmp = CGAL::squared_distance(shot[j], asteroid[i]);
+                ET one = 1.0;
                 bool reachable = dtmp <= max_radius[j];
 
-//                cerr << "distance = " << dtmp << endl;
-
                 if(!dist_limit || (dist_limit && reachable)) {
-                    double demoninator = max(1.0, dtmp);
+                    double demoninator = max(one, dtmp);
                     double added_e =  1 / demoninator;
+                    has_energy = true;
 
                     lp.set_a(j, lp_idx, added_e);
 
@@ -146,11 +116,15 @@ int main()
 
                 }
             }
-            lp_idx++;
+            if(has_energy) {
+                lp.set_r(lp_idx, CGAL::LARGER);
+                lp.set_b(lp_idx, density[i]);
+                lp_idx++;
+            }
         }
 
         Solution s1 = CGAL::solve_linear_program(lp, ET());
-        if(!s1.is_infeasible()) {
+        if(s1.is_optimal()) {
             cout << "y\n";
         } else {
             cout << "n\n";

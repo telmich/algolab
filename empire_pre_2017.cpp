@@ -121,8 +121,6 @@ int main()
         for(int i = 0; i < asteroid_shooting.size(); ++i) {
             bool has_one_constraint = false;
 
-            // // cerr << "A" << constraint_index << ": ";
-
             for(int j=0; j < asteroid_shooting[i].size(); ++j) {
                 // // cerr << "e" << j << "*" << 1/asteroid_shooting[i][j]  << " ";
 
@@ -156,19 +154,14 @@ int main()
         for(int j=0; j < shooting.size(); ++j) {
             lp.set_a(j, constraint_index, 1);
 
-            // // cerr << "e" << j << " ";
-
             /* what to minimise -- stricly speaking not required? */
 //            lp.set_c(j, 1);
         }
-        // // cerr << " <= " << e << endl;
+
         lp.set_r(constraint_index, CGAL::SMALLER);
         lp.set_b(constraint_index, e);
 
-        // cerr << "pre lp: " << constraint_index << " constraints " << shooting.size() << " vars\n";
         Solution sol = CGAL::solve_linear_program(lp, ET());
-
-        // // cerr << sol;
 
         if(sol.is_optimal()) {
             cout << "y\n";
