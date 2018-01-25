@@ -19,21 +19,17 @@ using namespace boost;
 using namespace std;
 
 
+typedef adjacency_list < vecS, vecS, undirectedS,
+                         no_property, property < edge_weight_t, int > > graph_t;
+typedef graph_traits < graph_t >::vertex_descriptor vertex_descriptor;
+typedef boost::graph_traits<graph_t>::edge_descriptor		Edge;		// Edge Descriptor: an object that represents a single edge.
+typedef boost::property_map<graph_t, boost::edge_weight_t>::type	WeightMap;	// property map to access the interior property edge_weight_t
+
 
 
 int
 main()
 {
-
-
-    typedef adjacency_list < listS, vecS, undirectedS,
-                             no_property, property < edge_weight_t, int > > graph_t;
-    typedef graph_traits < graph_t >::vertex_descriptor vertex_descriptor;
-    typedef std::pair<int, int> Edge;
-    typedef boost::graph_traits<graph_t>::edge_descriptor		Edge;		// Edge Descriptor: an object that represents a single edge.
-
-    typedef boost::property_map<graph_t, boost::edge_weight_t>::type	WeightMap;	// property map to access the interior property edge_weight_t
-
     int t;
     cin >> t;
 
@@ -42,13 +38,23 @@ main()
         cin >> k;
 
         vector<vector<int>> myweight(k);
+        vector<int> linweight;
+
+        int cnt = 0;
 
         for(int i=0; i < k; i++) {
             for(int j=0; j <= i; j++) {
                 int tmp;
                 cin >> tmp;
                 myweight[i].push_back(tmp);
+                linweight.push_back(tmp);
+                ++cnt;
             }
+        }
+
+        if(k == 2) {
+            cout << 0 << endl;
+            continue;
         }
 
         int this_row_offset = 0;
@@ -56,31 +62,38 @@ main()
 
         int num_nodes = (k*(k+1))/2;
 
-        graph_t G;
-//        property_map<graph_t, edge_weight_t>::type weightmap = get(edge_weight, G);
-        WeightMap weightmap = boost::get(boost::edge_weight, G);
-        std::vector<vertex_descriptor> p(num_vertices(G));
+        graph_t G(num_nodes);
 
+        WeightMap weightmap = boost::get(boost::edge_weight, G);
+
+        cerr << "vertices / k " << num_nodes << " " << k << endl;
+
+        int cur_vertex = 0;
 
         for(int i=0; i < (k-1); i++) {
             int j;
 
             for(j=0; j <= i; j++) {
+                int this_node = cur_vertex++;
 
-                int this_node = this_row_offset + j;
-                int left_below = myweight[k].size();
+                int left_below  = this_node + myweight[i].size();
                 int right_below = left_below + 1;
 
-                int weight_left = myweight[k+1][j];
-                int weight_right = myweight[k+1][j+1];
+                int weight_left = myweight[i+1][j];
+                int weight_right = myweight[i+1][j+1];
 
-                Edge e;	bool success;
+                Edge e;
+                bool success;
+
+                // cerr << "row " << i << " add_edge-l: "  << " " << this_node << " " << left_below << endl;
+                // cerr << "row " << i << " add_edge-r: "  << " " << this_node << " " << right_below << endl;
 
                 boost::tie(e, success) = boost::add_edge(this_node, left_below, G);
                 weightmap[e] = weight_left;
 
                 boost::tie(e, success) = boost::add_edge(this_node, right_below, G);
                 weightmap[e] = weight_right;
+
             }
 
             this_row_offset = next_row_offset;
@@ -88,37 +101,43 @@ main()
 
         }
 
+        vector<vector<int>> p(3);
+        vector<vector<int>> d(3);
 
-        // std::vector<int> d(num_vertices(g));
-        // vertex_descriptor s = vertex(A, g);
+        vector<int> start(3);
+        start[0] = 0;
+        start[1] = num_nodes - k;
+        start[2] = num_nodes - 1;
 
-        // dijkstra_shortest_paths(g, s,
-        //                         predecessor_map(boost::make_iterator_property_map(p.begin(), get(boost::vertex_index, g))).
-        //                         distance_map(boost::make_iterator_property_map(d.begin(), get(boost::vertex_index, g))));
+        for(int i = 0; i < 3; i++) {
+            p[i].resize(num_nodes);
+            d[i].resize(num_nodes);
 
-        // std::cout << "distances and parents:" << std::endl;
-        // graph_traits < graph_t >::vertex_iterator vi, vend;
+            dijkstra_shortest_paths(G, start[i],
+                                    predecessor_map(boost::make_iterator_property_map(p[i].begin(), get(boost::vertex_index, G))).
+                                    distance_map(boost::make_iterator_property_map(d[i].begin(), get(boost::vertex_index, G))));
+        }
 
-    // for (boost::tie(vi, vend) = vertices(g); vi != vend; ++vi) {
-    //     std::cout << "distance(" << name[*vi] << ") = " << d[*vi] << ", ";
-    //     std::cout << "parent(" << name[*vi] << ") = " << name[p[*vi]] << std::
-    //         endl;
-    // }
-    // std::cout << std::endl;
+        int mymin = d[0][0] + d[1][0] + d[2][0];
+        int minvertex = 0;
 
-    // graph_traits < graph_t >::edge_iterator ei, ei_end;
-    // for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei) {
-    //     graph_traits < graph_t >::edge_descriptor e = *ei;
-    //     graph_traits < graph_t >::vertex_descriptor
-    //         u = source(e, g), v = target(e, g);
-    //     dot_file << name[u] << " -> " << name[v]
-    //              << "[label=\"" << get(weightmap, e) << "\"";
-    //     if (p[v] == u)
-    //         dot_file << ", color=\"black\"";
-    //     else
-    //         dot_file << ", color=\"grey\"";
-    //     dot_file << "]";
-    // }
+        for(int i=0; i < num_nodes; i++) {
+            for(int j=0; j < 3; j++) {
+                if (d[j][i] >= INT_MAX) {
+                    cerr << "BUG vertex " << i << endl;
+                }
+            }
+
+            int here = d[0][i] + d[1][i] + d[2][i];
+            if(here < mymin) {
+                mymin = here;
+                minvertex = i;
+                cerr << "minvertex: " << i << " " << mymin << endl;
+            }
+        }
+
+        int res = mymin - 2*linweight[minvertex]; /* twice counted too much */
+        cout << res << endl;
 
     }
 }
