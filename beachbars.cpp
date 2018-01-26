@@ -65,7 +65,10 @@ int main()
                 }
 //                // cerr << "shrinking to" << left_idx+1 << " to " << right_idx+1 << " " << nextdist << endl;
                 left_idx++; /* shrink */
-                cur_cnt--;
+
+                if(cur_cnt > 1) { /* do not decrease below 1 */
+                    cur_cnt--;
+                }
 
                 if(left_idx > right_idx) {
                     right_idx = left_idx;
