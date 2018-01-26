@@ -7,16 +7,7 @@ using namespace std;
 
 int get_dist(int a, int b)
 {
-//    cerr << "a/b: " << a << " " << b << endl;
-    if(a >= 0 && b > 0)
-        return b - a;
-    if(a < 0 && b <= 0)
-        return abs(a) - abs(b);
-    if(a <=0 && b >= 0)
-        return b + abs(a);
-
-    cerr << "I caused a bug: " << a << " " << b << endl;
-    return -1;
+    return (b - a);
 }
 
 
@@ -60,7 +51,7 @@ int main()
             int nextdist = get_dist(pos[left_idx], pos[right_idx+1]);
 
             if(nextdist <= 200) {
-//                cerr << "growing at " << left_idx << " to " << right_idx+1 << " " << nextdist  << " " << cur_cnt << endl;
+//                // cerr << "growing at " << left_idx << " to " << right_idx+1 << " " << nextdist  << " " << cur_cnt << endl;
                 cur_cnt++;
                 right_idx++;
 
@@ -72,7 +63,7 @@ int main()
                     endposidx[left_idx] = right_idx;
 
                 }
-//                cerr << "shrinking to" << left_idx+1 << " to " << right_idx+1 << " " << nextdist << endl;
+//                // cerr << "shrinking to" << left_idx+1 << " to " << right_idx+1 << " " << nextdist << endl;
                 left_idx++; /* shrink */
                 cur_cnt--;
 
@@ -83,7 +74,7 @@ int main()
 
         }
 
-        cerr << "num intervals: " << counter.size() << endl;
+        // cerr << "num intervals: " << counter.size() << endl;
 
         sort(counter.begin(), counter.end(), std::greater<pair<int,int>>());
 
@@ -96,23 +87,24 @@ int main()
             l = pos[counter[i].second];
             r = pos[endposidx[counter[i].second]];
 
-            cerr << "cnt[" << i << "]=" << counter[i].first << " " << get_dist(l, r) << endl;
+            // cerr << "cnt[" << i << "]=" << counter[i].first << " " << get_dist(l, r) << endl;
 
             if(counter[i].first < best_cnt) break;
 
 
             shortest_interval = min(shortest_interval, get_dist(l, r));
         }
-        cerr << "shortest / best / cnt interval: " << shortest_interval << " " << best_cnt << endl;
+        // cerr << "shortest / best / cnt interval: " << shortest_interval << " " << best_cnt << endl;
 
         int min_max_dist;
 
         if(shortest_interval % 2 == 0) {
             min_max_dist = shortest_interval / 2;
         } else {
-            shortest_interval += 1;
             min_max_dist = (shortest_interval / 2)+1;
+            shortest_interval += 1;
         }
+
 
         vector<int> good_idx;
 
@@ -124,7 +116,7 @@ int main()
 
             if(get_dist(l, r) <= shortest_interval) {
                 good_idx.push_back(i);
-                cerr << "good interval at " << i << endl;
+                // cerr << "good interval at " << i << endl;
             }
         }
 
@@ -148,7 +140,7 @@ int main()
                     ourpos.push_back(tmp+1);
 
             }
-            cerr << "rlpos " << r << " " << l << " " << ourpos[ourpos.size()-1] << endl;
+            // cerr << "rlpos " << r << " " << l << " " << ourpos[ourpos.size()-1] << endl;
 
         }
         sort(ourpos.begin(), ourpos.end());
@@ -160,6 +152,6 @@ int main()
         }
         cout << endl;
 
-        cerr << "---------" << endl;
+        // cerr << "---------" << endl;
     }
 }
