@@ -1,226 +1,163 @@
-/*
-t <= 30
-n jammers <= 3*10^4
-m missions <= 3*10^4
-p power consumption < 2^53
-
-n lines positions of jammers: x,y < 2^24
-m lines missions: 4int: x0,y0 x1,y1 < 2^24
-
-
-output
- line 1: y n for every mission
-
- line 2: INT smallest power -> all missions can be executed
-
- line 3: smallest power usage such that same missions possible as initially
-
-
-
-Safe: ||q-ji|| <= sqrt(omega/4)
- -> omega in 1) given
- -> defines radius
- -> might
-
-Sample1:
- 2 jammers
-   0 0
-   1 0
- 1 mission
-  0 0 1 0
- 7 omega
-
-Sample2:
- 2 jammers
-   0 0
-   3 0
- 2 missions
-  -1 0 4 0
-  -4 0 0 0
- 12 omega
-
-
-Idea:
-
-for 1)
-  create delaunay based on the circles -> vorony to delaunay?
-  -> check if both start & end are within finite faces
-
-  1.2) delaunay based on positions umbrella?
-  -> check if both points are at maximum omega/4 squared_distance
-  -> 2*3*10^4 checks
-
-for 2)
-  given the delaunay triangulation & missions that failed, increase
-  radius for every failed mission until all are covered
-
-  for all failed missions:
-  - use nearest vertex, get squared distance, take highest [all can be done in 1)
-
-  round int ceil_to_double
-
-for 3)
-  take all y missions and find the minimum distance
-
-
-  Complexity: build triangulation,
-
- Similar, but not the same....
-
- */
-
 #include <iostream>
 #include <vector>
+#include <map>
+#include <set>
 
 using namespace std;
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-
-#include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Triangulation_vertex_base_with_info_2<unsigned, K>    Vb;
-typedef CGAL::Triangulation_data_structure_2<Vb>                    Tds;
-typedef CGAL::Delaunay_triangulation_2<K, Tds>                      Triangulation;
-
-typedef Triangulation::Point Point;
-typedef Triangulation::Edge_iterator Edge_iterator;
-typedef Triangulation::Edge Edge;
+typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
+typedef Triangulation::Edge_iterator  Edge_iterator;
+typedef K::Point_2 Point;
 typedef Triangulation::Vertex_handle Vertex;
 
-typedef K::FT FT;
-typedef std::pair<K::Point_2,int> IPoint;
+int get_region(Vertex v1, Vertex v2,
+               map<Vertex, int> &regionmap,
+               int &vindex) {
 
-#include <boost/pending/disjoint_sets.hpp>
-typedef boost::disjoint_sets_with_storage<> Uf;
+    int region;
 
-struct jamdistance
-{
-    int a, b;
-    FT distance;
-};
+    // if (regionmap.count(v1) == 1) {
+    //     region = regionmap
+    // }
 
-inline bool operator<(jamdistance a,  jamdistance b)
-{
-    return a.distance < b.distance;
 }
 
 
+#include <boost/config.hpp>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <utility>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/connected_components.hpp>
+
+using namespace boost;
+
+typedef adjacency_list <vecS, vecS, undirectedS> Graph;
+
 int main()
 {
-    ios_base::sync_with_stdio(false);
-
     int t;
     cin >> t;
 
-    while(t--)
-    {
-        /******************** read data ********************/
+    while(t--) {
         int n, m, p;
         cin >> n >> m >> p;
 
-        vector<IPoint> jammer(n);
+        double radius_sq = p/4;
 
-        vector<Point> mission_start(m);
-        vector<Point> mission_end(m);
+        map<Vertex, int> vertex2int;
+        set<Vertex> vset;
+        set<int> success_mission;
 
-        for(int i=0; i < n; ++i) {
-            int x, y;
+        set<pair<int, int> > disconnected_missions;
 
-            cin >> x >> y;
-
-            jammer[i] = make_pair(Point(x, y), i);
+        vector<Point> jammer(n);
+        for (int i = 0; i < n; ++i) {
+            cin >> jammer[i];
+        }
+        vector<Point> m_from(m);
+        vector<Point> m_to(m);
+        for (int i = 0; i < m; ++i) {
+            cin >> m_from[i];
+            cin >> m_to[i];
         }
 
-        for(int i=0; i < m; ++i) {
-            cin >> mission_start[i];
-            cin >> mission_end[i];
-        }
 
-        /******************** Triangulation ********************/
+
+        // construct triangulation
         Triangulation t;
         t.insert(jammer.begin(), jammer.end());
 
-        /******************** sort edges by length ********************/
-        vector<jamdistance> my_jammer_distance_list;
+        int region = 0;
 
-        for (Edge_iterator ei = t.finite_edges_begin(); ei != t.finite_edges_end(); ++ei) {
-            Triangulation::Vertex_handle v1 = ei->first->vertex((ei->second + 1) % 3);
-            Triangulation::Vertex_handle v2 = ei->first->vertex((ei->second + 2) % 3);
+        vector<pair<Vertex, Vertex>> usable_edges;
 
-            FT my_distance = t.segment(*ei).squared_length();
+        Graph G;
 
-            jamdistance d1;
-            d1.a = v1->info();
-            d1.b = v2->info();
-            d1.distance = my_distance;
 
-            my_jammer_distance_list.push_back(d1);
+        // Build graph
+        for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
+            vector<Vertex> v(2);
+            vector<Point> pt(2);
+            v[0] = e->first->vertex((e->second + 1) % 3);
+            v[1] = e->first->vertex((e->second + 2) % 3);
+
+            pt[0] = v[0]->point();
+            pt[1] = v[1]->point();
+
+            /* insert all, so we can check against all vertices later */
+            vset.insert(v[0]);
+            vset.insert(v[1]);
+
+            /* usable edge */
+            if(CGAL::squared_distance(pt[0], pt[1]) <= p) {
+                usable_edges.push_back(make_pair(v[0], v[1]));
+
+                int a = distance(vset.begin(), vset.find(v[0]));
+                int b = distance(vset.begin(), vset.find(v[1]));
+
+//                cerr << "a= " << a << " b= " << b << " " << distance(vset.begin(), vset.end()) << endl;
+
+                boost::add_edge(a, b, G);
+            }
         }
-        sort(my_jammer_distance_list.begin(), my_jammer_distance_list.end());
 
-        /******************** connected components / union find ********************/
-        Uf ufp(n);
-        for(auto it=my_jammer_distance_list.begin(); it != my_jammer_distance_list.end(); ++it) {
-            if(it->distance > p) break;
-            ufp.union_set(it->a, it->b);
-//            cerr << "Union of " << it->a << " " << it->b << endl;
-        }
-        /******************** find missions which work ********************/
-        FT a, b;
-        a = b = 0;
+        /* find out what is connected to what */
+        vector<int> comp(num_vertices(G));
+        int num = connected_components(G, &comp[0]);
 
-        Uf ufa(n);
-        Uf ufb(n);
+//        cerr << "COMPS: " << comp.size() << " verts=" << num_vertices(G) << endl;
 
-        auto it_a = my_jammer_distance_list.begin();
-        auto it_b = my_jammer_distance_list.begin();
+        double mindistforall = 0;
 
-        for(int i=0; i < m; ++i) {
-            Vertex v1 = t.nearest_vertex(mission_start[i]);
-            Vertex v2 = t.nearest_vertex(mission_end[i]);
+        int minpowerforall = p;
+        int minpowerforfirst = p;
 
-            FT distance_a = CGAL::squared_distance(v1->point(), mission_start[i]);
-            FT distance_b = CGAL::squared_distance(v2->point(), mission_end[i]);
+        for (int i = 0; i < m; ++i) {
+            if(comp.size() == 0) {
+                cout << "n";
+                continue;
+            }
 
-            FT max_dist = 4* max(distance_a, distance_b);
+            vector<Vertex> v(2);
+            vector<Point> pt(2);
 
-            if(max_dist <= p && ufp.find_set(v1->info()) == ufp.find_set(v2->info()) ) {
-                cout << "y";
+            v[0] = t.nearest_vertex(m_from[i]);
+            v[1] = t.nearest_vertex(m_to[i]);
 
-                /* update b: minimium size for this */
-                if(max_dist > b) b = max_dist;
+            pt[0] = v[0]->point();
+            pt[1] = v[1]->point();
 
-                /* find what?????????? => merge stations into same union until???   */
-                while(it_b != my_jammer_distance_list.end() &&
-                      ufb.find_set(v1->info()) != ufb.find_set(v2->info())) {
-                    ++it_b;
+            double d1 = CGAL::squared_distance(m_from[i], pt[0]);
+            double d2 = CGAL::squared_distance(m_to[i], pt[1]);
 
-                    ufb.union_set(it_b->a, it_b->b);
+            int a = distance(vset.begin(), vset.find(v[0]));
+            int b = distance(vset.begin(), vset.find(v[1]));
+
+            int misson_ok = false;
+
+            /* usable mission */
+            if( d1 <= radius_sq && d2 <= radius_sq) {
+                if(comp[a] == comp[b]) {
+                    mission_ok = true;
                 }
+            }
+
+            if(mission_ok) {
+                cout << "y";
+                success_mission.insert(i);
             } else {
                 cout << "n";
+                disconnected_missions.push_back(make_pair(a, b));
             }
-
-            if(max_dist > a) a = max_dist;
-
-
-            /* merge all into aaaaaaaaaaaaa??????????????? */
-            while(it_a != my_jammer_distance_list.end() &&
-                  ufb.find_set(v1->info()) != ufb.find_set(v2->info())) {
-                ++it_a;
-
-                ufb.union_set(it_a->a, it_a->b);
-            }
-
-
         }
-        /*  if we moved it, move it back once -------> no sqrt here???? */
-        if (it_a != my_jammer_distance_list.begin() && (it_a-1)->distance > a) a = (it_a-1)->distance;
-        if (it_b != my_jammer_distance_list.begin() && (it_b-1)->distance > b) b = (it_b-1)->distance;
-        cout << "\n" << a << "\n" << b << "\n";
+        cout << endl;
+        cout << minpowerforall << endl << minpowerforfirst << endl;
 
     }
-
 }
