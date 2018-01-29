@@ -69,22 +69,23 @@ int main()
         vector<int> gi(l);
         vector<int> di(l);
 
-        long demandsum = 0;
+        long demandvertex = 0;
         long bugdetector = 0;
 
         for(int i=0; i < l; i++) {
             cin >> gi[i] >> di[i];
-            demandsum += di[i];
+            demandvertex += di[i];
             bugdetector += gi[i];
             cerr << "gi/di " << gi[i] << " " << di[i] << endl;
         }
-        cerr << "Demand= " << demandsum << " / " << bugdetector << endl;
+        cerr << "Demand= " << demandvertex << " / " << bugdetector << endl;
 
         vector<int> from(p);
         vector<int> to(p);
 
         vector<int> min_capacity(p);
         vector<int> max_capacity(p);
+
 
         int capacitysum = 0;
 
@@ -105,34 +106,39 @@ int main()
          * reduced u->v
          */
 
-        int source = l+1;
-        int target = l+2;
-        int ssource = l+3;
-        int starget = l+4;
+        int n_source = l+1;
+        int n_target = l+2;
+
+        vector<int> min_s_demand(l,0);
+        vector<int> min_t_demand(l,0);
 
         /* edges from source to all cities */
-        for(int i=0; i < l; i++) {
-            eaG.addEdge(source, i, gi[i]); // s->u
-            eaG.addEdge(i, target, di[i]); // u->t
-        }
-        cerr << "-----\n";
 
+        int demandedge = 0;
 
         for(int i=0; i < p; i++) {
             int c = max_capacity[i] - min_capacity[i];
 
-            eaG.addEdge(ssource, to[i], min_capacity[i]); // s->v
-            eaG.addEdge(from[i], starget, min_capacity[i]); // u->t
+            min_s_demand[to[i]]   +=  min_capacity[i];
+            min_t_demand[from[i]] +=  min_capacity[i];
+            demandedge            += min_capacity[i];
+
+            // eaG.addEdge(n_source, to[i], min_capacity[i]); // s->v
+            // eaG.addEdge(from[i], n_target, min_capacity[i]); // u->t
+
             eaG.addEdge(from[i], to[i], c); // u->v
-            cerr << "--\n";
         }
-        eaG.addEdge(ssource, to[i], min_capacity[i]); // s->v
 
-        long flow = push_relabel_max_flow(G, source, target);
+        for(int i=0; i < l; i++) {
+            eaG.addEdge(n_source, i, gi[i] + min_s_demand[i]); // s->u
+            eaG.addEdge(i, n_target, di[i] + min_t_demand[i]); // u->t
+        }
 
-        cerr << "flow=" << flow << " demand=" << demandsum << endl;
+        long flow = push_relabel_max_flow(G, n_source, n_target);
 
-        if(flow == demandsum) {
+        cerr << "flow=" << flow << " demandv=" << demandvertex << " demande=" << demandedge << endl;
+
+        if(flow >= (demandvertex+demandedge)) {
             cout << "yes\n";
         } else {
             cout << "no\n";
