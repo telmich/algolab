@@ -94,7 +94,7 @@ int main()
             capacitysum += max_capacity[i];
         }
 
-        Graph G(l+4);
+        Graph G(l+2);
         EdgeCapacityMap capacitymap = get(edge_capacity, G);
         ReverseEdgeMap revedgemap = get(edge_reverse, G);
         ResidualCapacityMap rescapacitymap = get(edge_residual_capacity, G);
@@ -106,13 +106,11 @@ int main()
          * reduced u->v
          */
 
-        int n_source = l+1;
-        int n_target = l+2;
+        int n_source = l;
+        int n_target = l+1;
 
         vector<int> min_s_demand(l,0);
         vector<int> min_t_demand(l,0);
-
-        /* edges from source to all cities */
 
         int demandedge = 0;
 
@@ -122,9 +120,6 @@ int main()
             min_s_demand[to[i]]   +=  min_capacity[i];
             min_t_demand[from[i]] +=  min_capacity[i];
             demandedge            += min_capacity[i];
-
-            // eaG.addEdge(n_source, to[i], min_capacity[i]); // s->v
-            // eaG.addEdge(from[i], n_target, min_capacity[i]); // u->t
 
             eaG.addEdge(from[i], to[i], c); // u->v
         }
@@ -136,7 +131,7 @@ int main()
 
         long flow = push_relabel_max_flow(G, n_source, n_target);
 
-        cerr << "flow=" << flow << " demandv=" << demandvertex << " demande=" << demandedge << endl;
+        //long flow = boost::edmonds_karp_max_flow(G, n_source, n_target);
 
         if(flow >= (demandvertex+demandedge)) {
             cout << "yes\n";
@@ -144,6 +139,8 @@ int main()
             cout << "no\n";
         }
 
+
     }
+    exit(0);
 
 }
