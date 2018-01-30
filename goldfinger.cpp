@@ -12,6 +12,19 @@ typedef K::Point_2 Point;
 
 using namespace std;
 
+#include <cassert>
+#include <CGAL/basic.h>
+#include <CGAL/QP_models.h>
+#include <CGAL/QP_functions.h>
+#include <CGAL/Gmpz.h>
+
+// choose exact integral type
+typedef CGAL::Gmpq ET;
+
+// program and solution types
+typedef CGAL::Quadratic_program<int> Program;
+typedef CGAL::Quadratic_program_solution<ET> Solution;
+
 
 int main()
 {
@@ -27,9 +40,11 @@ int main()
         cin >> n >> m >> h >> imax;
 
         vector<Point> sensor(n);
+        vector<int> sensor_energy(n);
+
         vector<Point> mpe(m);
         vector<Point> henchmen(h);
-        vector<int> sensor_energy(n);
+
 
         for(int i=0; i<n; i++) {
             cin >> sensor[i] >> sensor_energy[i];
@@ -46,10 +61,11 @@ int main()
         bool has_hench = h > 0;
 
 
+        cerr << "one\n";
+
         vector<double> maxmpedist(m);
 
         if(has_hench) {
-
             Triangulation thench;
             thench.insert(henchmen.begin(), henchmen.end());
 
@@ -58,6 +74,45 @@ int main()
                 maxmpedist[i] = CGAL::squared_distance(mpe[i], v1->point());
             }
         }
+
+        vector<vector<double>> mpe_to_sensor(m);
+
+        cerr << "ab\n";
+        /* get mpe<->sensor distances */
+        for(int i=0; i < m; i++) {
+            mpe_to_sensor[i].resize(n);
+
+            for(int j=0; j < n; j++) {
+                mpe_to_sensor[i][j] = CGAL::squared_distance(mpe[i], sensor[j]);
+            }
+        }
+        cerr << "cd\n";
+
+        Program lp (CGAL::LARGER, true, 0, false, imax);
+
+        int lp_idx = 0;
+        for(int j=0; j < n; j++) {
+            lp.set_b(sensor_energy[j]);
+
+            for(int i=0; i < m; i++) {
+                if(has_hench && maxmpedist[i] <= mpe_to_sensor[i][j]) {
+                    lp.set_a(i, lp_idx, 1/mpe_to_sensor[i][j]);
+                }
+            }
+            lp_idx++;
+        }
+
+        lp.set_b(lp_idx, imax);
+        lp.set_r(lp_idx, CGAL::SMALLER);
+        for(int i=0; i < m; i++) {
+            lp.set_a(i, lp_idx, 1);
+        }
+
+        // // solve the program, using ET as the exact type
+          // Solution s = CGAL::solve_linear_program(lp, ET());
+
+
+
     }
 
 
