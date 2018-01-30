@@ -24,7 +24,7 @@ using namespace std;
 typedef CGAL::Gmpq ET;
 
 // program and solution types
-typedef CGAL::Quadratic_program<int> Program;
+typedef CGAL::Quadratic_program<ET> Program;
 typedef CGAL::Quadratic_program_solution<ET> Solution;
 
 
