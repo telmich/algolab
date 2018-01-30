@@ -30,14 +30,12 @@ typedef CGAL::Quadratic_program_solution<ET> Solution;
 
 int main()
 {
-
     ios_base::sync_with_stdio(false);
 
     int t;
     cin >> t;
 
     while(t--) {
-
         int n, m, h, imax;
         cin >> n >> m >> h >> imax;
 
@@ -46,7 +44,6 @@ int main()
 
         vector<Point> mpe(m);
         vector<Point> henchmen(h);
-
 
         for(int i=0; i<n; i++) {
             cin >> sensor[i] >> sensor_energy[i];
@@ -61,7 +58,6 @@ int main()
         }
 
         bool has_hench = h > 0;
-
 
         vector<double> maxmpedist(m);
 
@@ -91,16 +87,16 @@ int main()
         int lp_idx = 0;
         for(int j=0; j < n; j++) {
             lp.set_b(lp_idx, sensor_energy[j]);
-            cerr << "j=" << j;
+            // cerr << "j=" << j;
 
             for(int i=0; i < m; i++) {
                 if(!has_hench ||
-                   (has_hench && maxmpedist[i] <= mpe_to_sensor[i][j])) {
+                   (has_hench && maxmpedist[i] > mpe_to_sensor[i][j])) {
                     lp.set_a(i, lp_idx, 1/mpe_to_sensor[i][j]);
-                    cerr << " " << 1/mpe_to_sensor[i][j] << " * x" << i;
+                    // cerr << " " << 1/mpe_to_sensor[i][j] << " * x" << i;
                 }
             }
-            cerr << " >=" << sensor_energy[j] << endl;
+            // cerr << " >=" << sensor_energy[j] << endl;
 
             lp_idx++;
         }
@@ -108,20 +104,71 @@ int main()
         lp.set_b(lp_idx, imax);
         lp.set_r(lp_idx, CGAL::SMALLER);
         for(int i=0; i < m; i++) {
-            cerr << "x" << i << " + ";
+            // cerr << "x" << i << " + ";
 
             lp.set_a(i, lp_idx, 1);
         }
-        cerr << "0 <=" << imax << endl;
+        // cerr << "0 <=" << imax << endl;
 
         Solution s = CGAL::solve_linear_program(lp, ET());
 
-        if(s.is_optimal()) {
-            cout << "possible" << endl;
-        } else {
-            cout << "impossible " << s <<  endl;
+        /* not possible with ALL of them -> no need to reduce */
+        if(!s.is_optimal()) {
+            cout << "impossible " << endl;
+            continue;
         }
 
+        /* binary search for best k */
+
+        int l = 0;
+        int r = m;
+
+        int best_k = m;
+
+        while(l <= r) {
+            Program lp2 (CGAL::LARGER, true, 0, false, 0);
+
+            lp_idx = 0;
+
+            int k = l+(r-l)/2;
+
+            for(int j=0; j < n; j++) {
+                lp2.set_b(lp_idx, sensor_energy[j]);
+                // cerr << "j=" << j;
+
+                for(int i=0; i < k; i++) {
+                    if(!has_hench ||
+                       (has_hench && maxmpedist[i] > mpe_to_sensor[i][j])) {
+                        lp2.set_a(i, lp_idx, 1/mpe_to_sensor[i][j]);
+                        // cerr << " " << 1/mpe_to_sensor[i][j] << " * x" << i;
+                    }
+                }
+                // cerr << " >=" << sensor_energy[j] << endl;
+
+                lp_idx++;
+            }
+
+            lp2.set_b(lp_idx, imax);
+            lp2.set_r(lp_idx, CGAL::SMALLER);
+            for(int i=0; i < m; i++) {
+                lp2.set_a(i, lp_idx, 1);
+            }
+
+            Solution s = CGAL::solve_linear_program(lp2, ET());
+
+            /* not possible with ALL of them -> no need to reduce */
+            // cerr << "k imax s: " << k << " " << imax << " " << s <<endl;
+
+            if(s.is_optimal()) {
+                r = k-1;
+                best_k = min(best_k, k);
+            } else {
+                l = k+1;
+            }
+            // cerr << "r l k " << r << " " << l << " " << k << endl;
+
+        }
+        cout << best_k << endl;
 
     }
 
