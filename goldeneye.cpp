@@ -3,6 +3,8 @@
 #include <map>
 #include <set>
 
+#include <boost/pending/disjoint_sets.hpp>
+
 using namespace std;
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -13,6 +15,8 @@ typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
 typedef Triangulation::Edge_iterator  Edge_iterator;
 typedef K::Point_2 Point;
 typedef Triangulation::Vertex_handle Vertex;
+
+typedef boost::disjoint_sets_with_storage<> Uf;
 
 int get_region(Vertex v1, Vertex v2,
                map<Vertex, int> &regionmap,
@@ -56,6 +60,8 @@ int main()
 
         set<pair<int, int> > disconnected_missions;
 
+        map<double, pair<int, int>> unusable_edges;
+
         vector<Point> jammer(n);
         for (int i = 0; i < n; ++i) {
             cin >> jammer[i];
@@ -67,8 +73,6 @@ int main()
             cin >> m_to[i];
         }
 
-
-
         // construct triangulation
         Triangulation t;
         t.insert(jammer.begin(), jammer.end());
@@ -78,7 +82,7 @@ int main()
         vector<pair<Vertex, Vertex>> usable_edges;
 
         Graph G;
-
+        Uf ufp(n);
 
         // Build graph
         for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
@@ -94,24 +98,23 @@ int main()
             vset.insert(v[0]);
             vset.insert(v[1]);
 
+            double idist = CGAL::squared_distance(pt[0], pt[1]);
+            int a = distance(vset.begin(), vset.find(v[0]));
+            int b = distance(vset.begin(), vset.find(v[1]));
+
             /* usable edge */
-            if(CGAL::squared_distance(pt[0], pt[1]) <= p) {
+            if(idist <= p) {
                 usable_edges.push_back(make_pair(v[0], v[1]));
-
-                int a = distance(vset.begin(), vset.find(v[0]));
-                int b = distance(vset.begin(), vset.find(v[1]));
-
-//                cerr << "a= " << a << " b= " << b << " " << distance(vset.begin(), vset.end()) << endl;
-
                 boost::add_edge(a, b, G);
+                ufp.union_set(a, b);
+            } else {
+                unusable_edges[idist] = make_pair(a, b);
             }
         }
 
         /* find out what is connected to what */
         vector<int> comp(num_vertices(G));
         int num = connected_components(G, &comp[0]);
-
-//        cerr << "COMPS: " << comp.size() << " verts=" << num_vertices(G) << endl;
 
         double mindistforall = 0;
 
@@ -139,11 +142,12 @@ int main()
             int a = distance(vset.begin(), vset.find(v[0]));
             int b = distance(vset.begin(), vset.find(v[1]));
 
-            int misson_ok = false;
+            int mission_ok = false;
 
             /* usable mission */
             if( d1 <= radius_sq && d2 <= radius_sq) {
-                if(comp[a] == comp[b]) {
+//                if(comp[a] == comp[b]) {
+                if(ufp.find_set(a) == ufp.find_set(b)) {
                     mission_ok = true;
                 }
             }
@@ -153,11 +157,38 @@ int main()
                 success_mission.insert(i);
             } else {
                 cout << "n";
-                disconnected_missions.push_back(make_pair(a, b));
+                disconnected_missions.insert(make_pair(a, b));
             }
         }
         cout << endl;
-        cout << minpowerforall << endl << minpowerforfirst << endl;
 
+        double mindist = p
+        for(auto ai = disconnected_missions.begin(); ai != disconnected_missions.end(); ai++) {
+            int v_a = ai->first;
+            int v_b = ai->second;
+
+            /* add edges, until this mission is connected */
+
+            if(comp[v_a] == comp[v_b]) {
+                continue;
+            }
+
+            for(auto ai2 = unusable_edges.begin(); ai2 != unusable_edges.end(); ai2++) {
+                int a, b;
+                a = ai2->second.first;
+                b = ai2->second.second;
+
+
+                /* TODO: register length */
+                boost::add_edge(a, b, G);
+                connected_components(G, &comp[0]);
+                if(comp[v_a] == comp[v_b]) {
+                    break;
+                }
+            }
+
+
+        }
+            cout << minpowerforall << endl << minpowerforfirst << endl;
     }
 }

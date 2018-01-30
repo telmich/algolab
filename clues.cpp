@@ -1,139 +1,155 @@
-#include <iostream>
-
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 
-#include <CGAL/Triangulation_vertex_base_with_info_2.h>
-
-
-typedef CGAL::Exact_predicates_inexact_constructions_kernel         K;
-typedef CGAL::Triangulation_vertex_base_with_info_2<int, K>         Vb;
-typedef CGAL::Triangulation_data_structure_2<Vb>                    Tds;
-typedef CGAL::Delaunay_triangulation_2<K, Tds>                      Triangulation;
-
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Delaunay_triangulation_2<K>  Triangulation;
 typedef Triangulation::Edge_iterator  Edge_iterator;
-typedef Triangulation::Point Point;
 typedef Triangulation::Vertex_handle Vertex;
-typedef Triangulation::Vertex_circulator VC;
+typedef K::Point_2 Point;
 
-typedef Triangulation::Vertex_circulator Vertex_circulator;
-
-
+#include <map>
+#include <queue>
 
 using namespace std;
 
-#define MASK 3
-enum { UNVISITED=0, RED=1, GREEN=2 };
-
-bool dfs_mark(const Triangulation &trg, const Vertex &v, const int &mark, const double &rr)
-{
-    Vertex_circulator vc = trg.incident_vertices(v);
-//    Vertex_circulator vc = trg.incident_vertices(v), done(vc);
-
-
-    bool all_good = true;
-
-    /* have been here already */
-    if(v->info() != UNVISITED) return true;
-
-    v->info() = mark;
-
-    int next_mark = mark ^ MASK;
-
-//    cerr << "Visit " << v->point() << " colour = " << v->info() << endl;
-
-    do {
-        if(trg.is_infinite(vc) ) {
-            ++vc;
-            continue;
-        }
-
-        /* if same colour AND in range -> exit false */
-        if(vc->info() == v->info() && CGAL::squared_distance(v->point(), vc->point()) <= rr) {
-            all_good = false;
-            //          cerr << "conflict between " << v->point() << " " << vc->point() << endl;
-            break;
-        }
-
-        /* not visited? traverse! */
-        if(vc->info() == UNVISITED) {
-            all_good = all_good && dfs_mark(trg, vc, next_mark, rr);
-        }
-
-        ++vc;
-    } while(vc != done);
-
-    return all_good;
-
-}
-
 int main()
 {
-    ios_base::sync_with_stdio(false);
 
-    int t; cin >> t;
+    int t;
 
+    cin >> t;
     while(t--) {
-        int s, m, r;
-        cin >> s >> m >> r;
+        int n, m, r;
+
+        cin >> n >> m >> r;
 
         double rr = r*r;
 
-        vector<Point> station(s);
-        vector<pair<Point, int > > extended_station(s);
-        vector<pair<Point, Point> > clue(m);
 
-        for(int i=0; i < s; ++i) {
-            Point a;
+        // read points
+        std::vector<K::Point_2> station(n);
 
-            cin >> a;
-
-            extended_station[i] = make_pair(a, UNVISITED);
+        for (int i = 0; i < n; ++i) {
+            std::cin >> station[i];
         }
 
-        for(int i=0; i < m; ++i) {
-            Point a, b;
+        std::vector<K::Point_2> ai(m);
+        std::vector<K::Point_2> bi(m);
 
-            cin >> a >> b;
-
-            clue[i] = make_pair(a, b);
+        for (int i = 0; i < m; ++i) {
+            std::cin >> ai[i] >> bi[i];
         }
 
-        Triangulation trg;
-        trg.insert(extended_station.begin(), extended_station.end());
+        // construct triangulation
+        Triangulation t;
+        t.insert(station.begin(), station.end());
 
-        /* Just for fun */
-        // for(auto ei = trg.finite_edges_begin(); ei != trg.finite_edges_end(); ++ei) {
-        //     Vertex v1, v2;
 
-        //     /* find vertices by cw and ccw */
-        //     v1 = ei->first->vertex(trg.cw(ei->second));
-        //     v2 = ei->first->vertex(trg.ccw(ei->second));
 
-        //     cerr << "p1/p2 " << v1->point() << " " << v1->info() << endl;
-        //     cerr << "p1/p2 " << v2->point() << " " << v2->info() << endl;
-        // }
+        set<Vertex> vtoi;
 
-        /* DFS for marking */
-        bool all_good = true;
-        for(auto ei = trg.finite_vertices_begin(); ei != trg.finite_vertices_end(); ++ei) {
-            if(!dfs_mark(trg, ei, RED, rr)) {
-                all_good = false;
-                break;
+        vector<vector<int>> n_edges(n);
+
+        std::queue<int> Qstart; // BFS queue (from std:: not boost::)
+
+
+        for (Edge_iterator e = t.finite_edges_begin(); e != t.finite_edges_end(); ++e) {
+            Triangulation::Vertex_handle v1 = e->first->vertex((e->second + 1) % 3);
+            Triangulation::Vertex_handle v2 = e->first->vertex((e->second + 2) % 3);
+
+            if(CGAL::squared_distance(v1->point(), v2->point()) <= rr) {
+                vtoi.insert(v1);
+                vtoi.insert(v2);
+
+                int a = distance(vtoi.begin(), vtoi.find(v1));
+                int b = distance(vtoi.begin(), vtoi.find(v2));
+
+
+                Qstart.push(a);
+                Qstart.push(b);
+
+                n_edges[a].push_back(b);
+                n_edges[b].push_back(a);
             }
         }
-        if(!all_good) {
-            for(int i=0; i<m; ++i) {
-                cout << "n";
+        vector<int> colour(n, 0); /* 0 = undecided, 1 = red, 2 = green */
+
+        vector<bool> vis(n, false);
+
+        std::queue<int> Q; // BFS queue (from std:: not boost::)
+
+        #define RED 1
+        #define GREEN 2
+
+
+        while (!Qstart.empty()) {
+            int u = Qstart.front();
+            Qstart.pop();
+
+            if(vis[u]) {
+                continue;
             }
-            cout << endl;
-            continue;
-        } else {
-            /* this is wrong, but just for testing */
-            cout << "y\n";
+            vis[u] = true;
+            colour[u] = RED; /* areas always start at 1 */
+
+            for(auto ai = n_edges[u].begin(); ai !=  n_edges[u].end(); ai++) {
+                int v = *ai;
+                vis[v] = true;
+                colour[v] |= GREEN;
+                Q.push(v);
+            }
+
+            while (!Q.empty()) {
+                int v = Q.front();
+                Q.pop();
+                int othercolour;
+
+                if(colour[v] == RED)
+                    othercolour = GREEN;
+                else
+                    othercolour = RED;
+
+                for(auto ai = n_edges[v].begin(); ai !=  n_edges[v].end(); ai++) {
+                    int b = *ai;
+                    if(!vis[b]) {
+                        colour[b] |= othercolour;
+                        vis[b] = true;
+                        Q.push(b);
+                    }
+                }
+            }
         }
 
 
+        for(int i=0; i <m ; i++) {
+            Vertex v1 = t.nearest_vertex(ai[i]);
+            Vertex v2 = t.nearest_vertex(bi[i]);
+
+            Point p1 = v1->point();
+            Point p2 = v2->point();
+
+            if(CGAL::squared_distance(p1, ai[i]) > rr ||
+                CGAL::squared_distance(p2, bi[i]) > rr) {
+                cout << "n" << endl;
+                continue;
+            }
+
+            auto mm1 = vtoi.find(v1);
+            auto mm2 = vtoi.find(v2);
+
+            /* same station? done. */
+            if(mm1 != vtoi.end() && mm2 != vtoi.end() && *mm1 == *mm2) {
+                cout << "y" << endl;
+                continue;
+            }
+
+            /* one outside of reach? done */
+            if(mm1 == vtoi.end() || mm2 == vtoi.end()) {
+                cout << "n" << endl;
+                continue;
+            }
+
+
+        }
     }
-
 }

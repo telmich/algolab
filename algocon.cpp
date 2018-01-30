@@ -83,7 +83,6 @@ int main() {
         set<int> known_sets;
 
         set<int> mysculptures;
-
         vector<int> maxvcost(n,0);
 
         int bestcost = 0;
@@ -104,45 +103,28 @@ int main() {
 
         UF uf(n);
 
+        Graph G(n);
+
+        EdgeCapacityMap capacitymap = boost::get(boost::edge_capacity, G);
+        ReverseEdgeMap revedgemap = boost::get(boost::edge_reverse, G);
+        ResidualCapacityMap rescapacitymap = boost::get(boost::edge_residual_capacity, G);
+        EdgeAdder eaG(G, capacitymap, revedgemap);
+
+
+        if(m == 0) {
+            cout << "0\n1 0\n";
+            continue;
+        }
+
+        for(int j=0; j < m; j++) { /* build graph */
+            eaG.addEdge(limb[j].first, limb[j].second, cost[j]);
+        }
+
         for(int i=0; i < n; i++) {
-            int myset = uf.find_set(i);
-
-            /* already known for this sculpture */
-            // if(known_sets.find(myset) != known_sets.end()) {
-            //     continue;
-            // }
-
-            Graph G(n+1);
-
-            EdgeCapacityMap capacitymap = boost::get(boost::edge_capacity, G);
-            ReverseEdgeMap revedgemap = boost::get(boost::edge_reverse, G);
-            ResidualCapacityMap rescapacitymap = boost::get(boost::edge_residual_capacity, G);
-            EdgeAdder eaG(G, capacitymap, revedgemap);
-
             int src = i;
-            int sink = n;
+            int sink = (src+1)%n;
 
-            for(int j=0; j < m; j++) { /* build graph */
-                /* add edges in both directions */
-                eaG.addEdge(limb[j].first, limb[j].second, cost[j]);
-                eaG.addEdge(limb[j].second, limb[j].first, cost[j]);
-
-                if(limb[j].second != src &&
-                   limb[j].first  != src) {
-                    eaG.addEdge(limb[j].first, sink, cost[j]);
-                    eaG.addEdge(limb[j].second, sink, cost[j]);
-
-                }
-            }
-
-            // for(int j=0; j < n; j++) { /* vertex -> sink */
-            //     if(j == src) continue;
-            //     eaG.addEdge(limb[j].first, sink, maxvcost[j]);
-            // }
-
-            // Find a min cut via maxflow
             int flow = boost::push_relabel_max_flow(G, src, sink);
-            std::cerr << "maximum flow = minimum cut = " << flow << std::endl;
 
             // BFS to find vertex set S
             std::vector<int> vis(n, false); // visited flags
@@ -153,12 +135,15 @@ int main() {
                 bestcost = flow;
                 mysculptures.clear();
                 changed = true;
+            } else {
+                continue;
             }
 
             mysculptures.insert(src);
 
             vis[src] = true; // Mark the source as visited
             Q.push(src);
+
             while (!Q.empty()) {
                 const int u = Q.front();
                 Q.pop();
@@ -171,8 +156,6 @@ int main() {
                     if(changed) {
                         mysculptures.insert(v);
                     }
-
-                    uf.union_set(src, v);
 
                     vis[v] = true;
                     Q.push(v);

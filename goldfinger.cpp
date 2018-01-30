@@ -92,7 +92,7 @@ int main()
 
         int lp_idx = 0;
         for(int j=0; j < n; j++) {
-            lp.set_b(sensor_energy[j]);
+            lp.set_b(lp_idx, sensor_energy[j]);
 
             for(int i=0; i < m; i++) {
                 if(has_hench && maxmpedist[i] <= mpe_to_sensor[i][j]) {
