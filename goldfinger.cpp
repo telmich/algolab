@@ -17,6 +17,8 @@ using namespace std;
 #include <CGAL/QP_models.h>
 #include <CGAL/QP_functions.h>
 #include <CGAL/Gmpz.h>
+#include <CGAL/Gmpq.h>
+
 
 // choose exact integral type
 typedef CGAL::Gmpq ET;
@@ -61,8 +63,6 @@ int main()
         bool has_hench = h > 0;
 
 
-        cerr << "one\n";
-
         vector<double> maxmpedist(m);
 
         if(has_hench) {
@@ -77,7 +77,6 @@ int main()
 
         vector<vector<double>> mpe_to_sensor(m);
 
-        cerr << "ab\n";
         /* get mpe<->sensor distances */
         for(int i=0; i < m; i++) {
             mpe_to_sensor[i].resize(n);
@@ -86,31 +85,42 @@ int main()
                 mpe_to_sensor[i][j] = CGAL::squared_distance(mpe[i], sensor[j]);
             }
         }
-        cerr << "cd\n";
 
-        Program lp (CGAL::LARGER, true, 0, false, imax);
+        Program lp (CGAL::LARGER, true, 0, false, 0);
 
         int lp_idx = 0;
         for(int j=0; j < n; j++) {
             lp.set_b(lp_idx, sensor_energy[j]);
+            cerr << "j=" << j;
 
             for(int i=0; i < m; i++) {
-                if(has_hench && maxmpedist[i] <= mpe_to_sensor[i][j]) {
+                if(!has_hench ||
+                   (has_hench && maxmpedist[i] <= mpe_to_sensor[i][j])) {
                     lp.set_a(i, lp_idx, 1/mpe_to_sensor[i][j]);
+                    cerr << " " << 1/mpe_to_sensor[i][j] << " * x" << i;
                 }
             }
+            cerr << " >=" << sensor_energy[j] << endl;
+
             lp_idx++;
         }
 
         lp.set_b(lp_idx, imax);
         lp.set_r(lp_idx, CGAL::SMALLER);
         for(int i=0; i < m; i++) {
+            cerr << "x" << i << " + ";
+
             lp.set_a(i, lp_idx, 1);
         }
+        cerr << "0 <=" << imax << endl;
 
-        // // solve the program, using ET as the exact type
-          // Solution s = CGAL::solve_linear_program(lp, ET());
+        Solution s = CGAL::solve_linear_program(lp, ET());
 
+        if(s.is_optimal()) {
+            cout << "possible" << endl;
+        } else {
+            cout << "impossible " << s <<  endl;
+        }
 
 
     }
