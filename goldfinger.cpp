@@ -19,13 +19,10 @@ using namespace std;
 #include <CGAL/Gmpz.h>
 #include <CGAL/Gmpq.h>
 
-
-// choose exact integral type
 typedef CGAL::Gmpq ET;
 
-// program and solution types
-typedef CGAL::Quadratic_program<ET> Program;
-typedef CGAL::Quadratic_program_solution<ET> Solution;
+typedef CGAL::Quadratic_program<double> Program;
+typedef CGAL::Quadratic_program_solution<double> Solution;
 
 
 int main()
@@ -87,16 +84,13 @@ int main()
         int lp_idx = 0;
         for(int j=0; j < n; j++) {
             lp.set_b(lp_idx, sensor_energy[j]);
-            // cerr << "j=" << j;
 
             for(int i=0; i < m; i++) {
                 if(!has_hench ||
                    (has_hench && maxmpedist[i] > mpe_to_sensor[i][j])) {
                     lp.set_a(i, lp_idx, 1/mpe_to_sensor[i][j]);
-                    // cerr << " " << 1/mpe_to_sensor[i][j] << " * x" << i;
                 }
             }
-            // cerr << " >=" << sensor_energy[j] << endl;
 
             lp_idx++;
         }
@@ -104,13 +98,10 @@ int main()
         lp.set_b(lp_idx, imax);
         lp.set_r(lp_idx, CGAL::SMALLER);
         for(int i=0; i < m; i++) {
-            // cerr << "x" << i << " + ";
-
             lp.set_a(i, lp_idx, 1);
         }
-        // cerr << "0 <=" << imax << endl;
 
-        Solution s = CGAL::solve_linear_program(lp, ET());
+        Solution s = CGAL::solve_linear_program(lp, double());
 
         /* not possible with ALL of them -> no need to reduce */
         if(!s.is_optimal()) {
@@ -140,10 +131,8 @@ int main()
                     if(!has_hench ||
                        (has_hench && maxmpedist[i] > mpe_to_sensor[i][j])) {
                         lp2.set_a(i, lp_idx, 1/mpe_to_sensor[i][j]);
-                        // cerr << " " << 1/mpe_to_sensor[i][j] << " * x" << i;
                     }
                 }
-                // cerr << " >=" << sensor_energy[j] << endl;
 
                 lp_idx++;
             }
@@ -154,10 +143,7 @@ int main()
                 lp2.set_a(i, lp_idx, 1);
             }
 
-            Solution s = CGAL::solve_linear_program(lp2, ET());
-
-            /* not possible with ALL of them -> no need to reduce */
-            // cerr << "k imax s: " << k << " " << imax << " " << s <<endl;
+            Solution s = CGAL::solve_linear_program(lp2, double());
 
             if(s.is_optimal()) {
                 r = k-1;
@@ -165,7 +151,6 @@ int main()
             } else {
                 l = k+1;
             }
-            // cerr << "r l k " << r << " " << l << " " << k << endl;
 
         }
         cout << best_k << endl;
