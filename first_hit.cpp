@@ -25,11 +25,6 @@ typedef K::Ray_2 Ray;
 typedef K::Segment_2 Segment;
 typedef K::FT FT;
 
-typedef K_inexact::Ray_2 RayE;
-typedef K_inexact::Segment_2 SegmentE;
-typedef K_inexact::Point_2 PointE;
-
-
 double floor_to_long(const K::FT& x) {
     double a = std::floor(CGAL::to_double(x));
     while (a > x) a -= 1;
@@ -45,94 +40,104 @@ int main()
 
     cin >> n;
 
+    cout << std::setiosflags(ios::fixed) << setprecision(0);
+
     while(n) {
 
         long r,s,t,u;
 
         cin >> r >> s >> t >> u;
+
         Point p1(r,s), p2(t,u);
-        PointE p1E(r,s), p2E(t,u);
 
         Ray ray = Ray(p1, p2);
-        RayE rayE = RayE(p1E, p2E);
 
         bool intersects = false;
         FT distance = -1;
         Point hit;
-        PointE hitE;
 
-        cout << std::setprecision(20);
+        Point thispoint;
+        FT    thisdist;
+
+        vector<Segment> seg(n);
 
         for(int i=0; i < n; ++i) {
-            long a, b, c, d;
+            Point p1, p2;
 
-            cin >> a >> b >> c >> d;
+            cin >> p1 >> p2;
+            seg[i] = Segment(p1, p2);
+        }
+        random_shuffle(seg.begin(), seg.end());
 
-            Point o1(a,b), o2(c,d);
-            PointE o1E(a,b), o2E(c,d);
+        Segment *sp;
+        Point   *pp;
 
-            Point thispoint;
-            FT    thisdist;
+        int i;
 
+        for(i=0; i < n; ++i) {
+            cerr << "testing " << i << endl;
+            if(CGAL::do_intersect(ray, seg[i])) {
+                auto o = CGAL::intersection(ray, seg[i]);
 
-            Segment  obstacle  = Segment(o1, o2);
-            SegmentE obstacleE = SegmentE(o1E, o2E);
+                if(pp = boost::get<Point>(&*o)) {
+                    hit = *pp;
+                    distance  = CGAL::squared_distance(p1, thispoint);
+                } else if (sp = boost::get<Segment>(&*o)) {
+                    Point p3;
 
-            bool this_intersects = false;
+                    if(CGAL::collinear_are_ordered_along_line(ray.source(), seg[i].source(), seg[i].target())) {
+                        p3 = seg[i].source();
+                    } else {
+                        p3 = seg[i].target();
+                    }
 
-            if(intersects) { /* clipping */
-                SegmentE segE(p1E, hitE);
-                this_intersects = CGAL::do_intersect(segE, obstacleE);
-            } else {
-                this_intersects = CGAL::do_intersect(rayE, obstacleE);
+                    hit = p3;
+                    distance = CGAL::squared_distance(p1, p3);
+                }
+
+                intersects = true;
+                break;
             }
+        }
+        cerr << "post first\n";
 
-            Segment *sp;
-            Point   *pp;
+        if(!intersects) {
+            cout << "no\n";
+            continue;
+        }
 
-            if(this_intersects) {
-                auto o = CGAL::intersection(ray, obstacle);
+        Segment rayseg = Segment(p1, thispoint);
+
+        for(; i < n; ++i) {
+            if(CGAL::do_intersect(rayseg, seg[i])) {
+                auto o = CGAL::intersection(rayseg, seg[i]);
+                Point p3;
 
                 if(pp = boost::get<Point>(&*o)) {
                     thispoint = *pp;
                     thisdist  = CGAL::squared_distance(p1, thispoint);
                 } else if (sp = boost::get<Segment>(&*o)) {
 
-                    Point s1 = sp->source();
-                    Point s2 = sp->target();
 
-                    FT dist1 = CGAL::squared_distance(p1, s1);
-                    FT dist2 = CGAL::squared_distance(p1, s2);
-
-                    if(dist1 > dist2) {
-                        thisdist = dist2;
-                        thispoint = s2;
+                    if(CGAL::collinear_are_ordered_along_line(ray.source(), seg[i].source(), seg[i].target())) {
+                        p3 = seg[i].source();
                     } else {
-                        thisdist = dist1;
-                        thispoint = s1;
+                        p3 = seg[i].target();
                     }
 
+                    thispoint = p3;
+                    thisdist = CGAL::squared_distance(p1, p3);
                 }
-//                cerr << "got intersection at " << thispoint << " " << thisdist << endl;
-
-                if(!intersects) {                 /* first time */
-                    intersects = true;
+                if(thisdist < distance) {
+                    rayseg = Segment(p1, thispoint);
                     distance = thisdist;
-                    hit      = thispoint;
-                } else {                          /* update */
-                    if(thisdist < distance) {
-                        distance = thisdist;
-                        hit      = thispoint;
-                    }
+                    hit = p3;
                 }
             }
         }
 
-        if(intersects) {
-            cout << floor_to_long(hit.x()) << " " << floor_to_long(hit.y()) << "\n";
-        } else {
-            cout << "no\n";
-        }
+        cout << floor_to_long(hit.x()) << " " << floor_to_long(hit.y()) << "\n";
+
         cin >> n;
     }
 }
