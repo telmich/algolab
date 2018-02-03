@@ -1,123 +1,122 @@
 #include <iostream>
 #include <vector>
-#include <map>
 #include <set>
+#include <climits>
+#include <algorithm>
 
 using namespace std;
 
-int main() {
+int main()
+{
+
     ios_base::sync_with_stdio(false);
 
     int t;
     cin >> t;
 
     while(t--) {
-        int n, tmp;
+        int n;
         cin >> n;
 
-        vector<int> wordcount(n);
-        map<long, long> position;
-        set<int> missingword;
-        vector<int> wordininterval(n, 0);
+        vector<int> mn(n);
+        set<int> missing;
+        int totalcnt = 0;
 
-        for(int i=0; i<n; i++) {
-            cin >> tmp;
-            wordcount[i] = tmp;
-            missingword.insert(i);
+        vector<vector<int>> wordin(n);
+
+        for(int i=0; i< n; i++) {
+            cin >> mn[i];
+            wordin[i].resize(mn[i]);
+            totalcnt += mn[i];
+            missing.insert(i);
         }
 
-        /* read positions -> save in map*/
-        for(int i=0; i<n; i++) {
-            for(int j=0; j<wordcount[i]; j++) {
+
+        vector<int> poslist;
+
+        int minpos = INT_MAX;
+
+        for(int i=0; i< n; i++) {
+            for(int j=0; j < mn[i]; j++) {
+                int tmp;
                 cin >> tmp;
-                position[tmp] = i;
+
+                wordin[i][j] = tmp;
+                poslist.push_back(tmp);
+
+                minpos = min(wordin[i][j], minpos);
             }
         }
 
-        long lastpos = (position.rbegin())->first;
+        vector<int> wordpos;
 
-        long min_interval_length = lastpos;
+        sort(poslist.begin(), poslist.end());
 
-        auto left = position.begin(), right = position.begin();
-
-        /* add first word "manually" */
-        missingword.erase(right->second);
-        wordininterval[right->second]++;
-
-        long cnt = 0;
-
-        /* create window containing all words -- reduce/grow until end */
-        while( true ) {
-            ++cnt;
-
-            /* found minimum? exit quickly -- optional */
-            if((min_interval_length+1) == n) break;
+        /* change orientation */
+        for(int i=0; i < poslist.size(); i++) {
 
 
-            /* abort latest when interval is smaller than query */
-            // if (left->first == lastpos) {
-            if ((lastpos - left->first) < n) {
-                // cout << "length exit\n";
-                break;
+        }
+
+        cerr << "min ..... " << minpos <<endl;
+
+        for(int i=0; i< n; i++) {
+            for(int j=0; j < mn[i]; j++) {
+                int tmp;
+                tmp = wordin[i][j];
+                cerr << "tmp-minpos = " << tmp-minpos << " " << wordpos.size() << endl;
+                wordpos[tmp-minpos] = i;
             }
+        }
+        cerr << "two ne\n";
 
-            /* This should not happen / never happend */
-            // if(left->first > right->first) {
-            //     cout << "overlapping exit\n";
-            //     break;
-            // }
 
-            /* grow interval if incomplete */
-            if(!missingword.empty()) {
-                ++right; /* go to next position */
+        int l, r;
+        l = r = 0;
 
-                /* we want to extend, but cannot -> time to exit */
-                if(right == position.end()) {
-                    break;
-                }
+        int mindist = totalcnt;
+        missing.erase(wordpos[0]);
 
-                int wordtoadd = right->second;
+        vector<int> incount(n, 0);
+        incount[wordpos[0]]++;
 
-                // // cerr<< "growing: " << wordtoadd << " pos: " << right->first << endl;
+        cerr << "one\n";
 
-                /* if current count is zero, it must be missingword set -> remove */
-                if(wordininterval[wordtoadd] == 0) {
-                    missingword.erase(wordtoadd);
-                }
+        while(r < totalcnt) {
+            cerr << "lr " << l << " " << r << endl;
 
-                wordininterval[wordtoadd]++; /* remember how often word is in interval */
+            if(missing.size() == 0) { /* shrink */
+                int word = wordpos[l];
 
-                /* if we just put all words in interval, update length */
-                if(missingword.empty()) {
-//                    // cerr<< "r/l: " << right->first << " " << left->first << endl;
-                    min_interval_length = min(min_interval_length, (right->first)-(left->first));
-                    // cerr<< "length: " << min_interval_length << endl;
-                }
-            } else { /* shrink interval */
-                int wordtoremove = left->second;
-                // cerr<< "shrinking: " << wordtoremove << " pos: " << left->first << endl;
+                incount[word] = max(incount[word]-1, 0);
 
-                left++; /* AND actually move the left side */
+                l++;
 
-                wordininterval[wordtoremove]--;
-                if(wordininterval[wordtoremove] == 0) {
-                    missingword.insert(wordtoremove);
+                if(incount[word] == 0) {
+                    missing.insert(word);
                 } else {
-                    /* still complete, try to update */
-                    min_interval_length = min(min_interval_length, (right->first)-(left->first));
-                    // cerr << "length: " << min_interval_length << endl;
+                    cerr << "mindist: " << r << " " << l << " " << r-l+1 << endl;
+                    mindist = min(mindist, r-l+1);
                 }
 
-            }
+            } else {       /* grow */
+                r++;
+                int word = wordpos[r];
 
-            if(min_interval_length < 0) {
-                // cerr << "BUG - negative interval\n";
-                exit(42);
-            }
+                incount[word]++;
+                if(incount[word] == 1) {
+                    missing.erase(word);
+                }
+                if(missing.size() == 0) {
+                    cerr << "mindistg: " << r << " " << l << " " << r-l+1 << endl;
 
+                    mindist = min(mindist, r-l+1);
+                }
+            }
         }
-        cout << min_interval_length+1 << endl;
-//        cout << "last: " << lastpos << " " << "cnt=" << cnt << endl;
+        cout << mindist << endl;
+
+
     }
 
 }
