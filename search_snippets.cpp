@@ -31,10 +31,7 @@ int main()
             missing.insert(i);
         }
 
-
-        vector<int> poslist;
-
-        int minpos = INT_MAX;
+        vector<pair<int, int>> poslist; /* position, word */
 
         for(int i=0; i< n; i++) {
             for(int j=0; j < mn[i]; j++) {
@@ -42,51 +39,34 @@ int main()
                 cin >> tmp;
 
                 wordin[i][j] = tmp;
-                poslist.push_back(tmp);
+                poslist.push_back(make_pair(tmp, i));
 
-                minpos = min(wordin[i][j], minpos);
             }
         }
-
-        vector<int> wordpos;
 
         sort(poslist.begin(), poslist.end());
-
-        /* change orientation */
-        for(int i=0; i < poslist.size(); i++) {
-
-
-        }
-
-        cerr << "min ..... " << minpos <<endl;
-
-        for(int i=0; i< n; i++) {
-            for(int j=0; j < mn[i]; j++) {
-                int tmp;
-                tmp = wordin[i][j];
-                cerr << "tmp-minpos = " << tmp-minpos << " " << wordpos.size() << endl;
-                wordpos[tmp-minpos] = i;
-            }
-        }
-        cerr << "two ne\n";
-
 
         int l, r;
         l = r = 0;
 
-        int mindist = totalcnt;
-        missing.erase(wordpos[0]);
+        long mindist = poslist.rbegin()->first - poslist.begin()->first ;
+
+        missing.erase(poslist[0].second);
 
         vector<int> incount(n, 0);
-        incount[wordpos[0]]++;
+        incount[poslist[0].second]++;
 
-        cerr << "one\n";
+        long lpos, rpos;
 
-        while(r < totalcnt) {
-            cerr << "lr " << l << " " << r << endl;
+        while(r < poslist.size()) {
+            if(l > r || poslist[l].first > poslist[r].first || mindist < 0) {
+                cout << "BUG: " << l << " " << r << " " << mindist << endl;
+                return -1;
+            }
+            // cerr << "lr " << l << " " << r << endl;
 
             if(missing.size() == 0) { /* shrink */
-                int word = wordpos[l];
+                int word = poslist[l].second;
 
                 incount[word] = max(incount[word]-1, 0);
 
@@ -95,28 +75,38 @@ int main()
                 if(incount[word] == 0) {
                     missing.insert(word);
                 } else {
-                    cerr << "mindist: " << r << " " << l << " " << r-l+1 << endl;
-                    mindist = min(mindist, r-l+1);
-                }
+                    lpos = poslist[l].first;
+                    rpos = poslist[r].first;
 
+                    // cerr << "mindist: " << r << " " << l << " " << r-l+1 << endl;
+                    mindist = min(mindist, rpos-lpos+1);
+                    if(mindist < 0) {
+                        cout << "1err: lpos=" << lpos << "rpos= " << rpos << "md= " << mindist << "l= " << l << "r= " << r << endl; return -1;
+
+                    }
+                }
             } else {       /* grow */
+                if(r+1 == poslist.size()) break;
                 r++;
-                int word = wordpos[r];
+                int word = poslist[r].second;
 
                 incount[word]++;
                 if(incount[word] == 1) {
                     missing.erase(word);
                 }
                 if(missing.size() == 0) {
-                    cerr << "mindistg: " << r << " " << l << " " << r-l+1 << endl;
+                    lpos = poslist[l].first;
+                    rpos = poslist[r].first;
 
-                    mindist = min(mindist, r-l+1);
+                    // cerr << "mindist: " << r << " " << l << " " << r-l+1 << endl;
+                    mindist = min(mindist, rpos- lpos+1);
+                    if(mindist < 0) {
+                        cout << "2err: lpos=" << lpos << "rpos= " << rpos << "md= " << mindist << "l= " << l << "r= " << r << " " << poslist.size() << endl; return -1;
+                    }
+
                 }
             }
         }
         cout << mindist << endl;
-
-
     }
-
 }

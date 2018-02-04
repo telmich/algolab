@@ -1,12 +1,3 @@
-// ALGOLAB BGL Tutorial 2
-// Flow example demonstrating
-// - interior graph properties for flow algorithms
-// - custom edge adder
-
-// Compile and run with one of the following:
-// g++ -std=c++11 -O2 flows.cpp -o flows ./flows
-// g++ -std=c++11 -O2 -I path/to/boost_1_58_0 flows.cpp -o flows; ./flows
-
 // Includes
 // ========
 // STL includes
@@ -20,6 +11,9 @@
 
 #include <boost/graph/cycle_canceling.hpp>
 #include <boost/graph/edmonds_karp_max_flow.hpp>
+
+#include <boost/graph/successive_shortest_path_nonnegative_weights.hpp>
+#include <boost/graph/find_flow_cost.hpp>
 
 // Namespaces
 using namespace std;
@@ -43,7 +37,7 @@ typedef	boost::property_map<Graph, boost::edge_weight_t>::type		WeightMap;
 typedef	boost::graph_traits<Graph>::vertex_descriptor			Vertex;
 typedef	boost::graph_traits<Graph>::edge_descriptor			Edge;
 typedef	boost::graph_traits<Graph>::edge_iterator			EdgeIt;
-
+typedef	boost::graph_traits<Graph>::out_edge_iterator			OutEdgeIt;
 
 
 // Custom Edge Adder Class, that holds the references
@@ -100,30 +94,66 @@ void testcases() {
 
 	EdgeAdder eaG(G, capacitymap, revedgemap, wmap);
 
-    for(int i=0; i<p; i++) {
-        int bi, si, ci;
-        cin >> bi >> si >> ci;
+    vector<int> bi(p);
+    vector<int> si(p);
+    vector<int> ci(p);
 
-        eaG.addEdge(si, b_offset + bi, 1, -ci); // from, to, capacity, weight
+    int maxcost = 0;
+
+    for(int i=0; i<p; i++) {
+        cin >> bi[i] >> si[i] >> ci[i];
+
+        maxcost = max(maxcost, ci[i]);
     }
 
     /* to sailors */
     for(int i=0; i<s; i++) {
-        eaG.addEdge(s_vertex, i, 1, 0); // from, to, capacity, weight
+        eaG.addEdge(s_vertex, i, 1, 0);
     }
 
-    /* from boats */
+    for(int i=0; i<p; i++) {
+        eaG.addEdge(si[i], b_offset + bi[i], 1, maxcost-ci[i]);
+    }
+
+    /* from boats to sink */
     for(int i=0; i<b; i++) {
-        eaG.addEdge(b_offset + i, t_vertex, 1, 0); // from, to, capacity, weight
+        eaG.addEdge(b_offset + i, t_vertex, 1, 0);
     }
 
 
-    boost::edmonds_karp_max_flow(G, s_vertex, t_vertex);
-    boost::cycle_canceling(G);
+    long flow;
+//    flow = boost::edmonds_karp_max_flow(G, s_vertex, t_vertex);
+
+    successive_shortest_path_nonnegative_weights(G, s_vertex, t_vertex);
+
+    long s_edges_with_flow = 0;
+
+    OutEdgeIt ebeg, eend;
+    for (boost::tie(ebeg, eend) = boost::out_edges(s_vertex, G); ebeg != eend; ++ebeg) {
+        const int v = boost::target(*ebeg, G);
+
+        if (rescapacitymap[*ebeg] == 0) s_edges_with_flow++;
+    }
+
+    long tedges = 0;
+    EdgeIt ebeg2, eend2;
+    for (boost::tie(ebeg2, eend2) = boost::edges(G); ebeg2 != eend2; ++ebeg2) {
+
+        int v = boost::target(*ebeg2, G);
+        int u = boost::source(*ebeg2, G);
+
+        if (v == t_vertex || u == t_vertex) {
+            if(rescapacitymap[*ebeg2] == 0) tedges++;
+        }
+    }
+
+    flow = s_edges_with_flow;
 
     int cost = find_flow_cost(G);
+    int res = (flow * maxcost) - cost;
 
-    cout << -cost << endl;
+    cerr << "res=" << res << " flow: " << flow << " sedges=" << s_edges_with_flow << " tedges=" << tedges << " s=" << s << " maxcost= " << maxcost << " totalcost=" << cost << " b=" << b << " p=" << p << endl;
+    cout << res << endl;
 
 }
 
